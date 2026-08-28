@@ -12,3 +12,7 @@ artifacts/app_log.txt
 
 # local tooling config
 .claude/
+
+# node (deck generator)
+node_modules/
+package-lock.json

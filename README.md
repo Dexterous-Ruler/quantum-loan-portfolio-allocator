@@ -42,6 +42,18 @@ is no optimisation problem to solve.
 Both Deliverable-4 documents are **generated from the measured CSVs** — no number in either
 is typed by hand, so the page cannot drift from the experiment.
 
+Supporting material: [`PRESENTATION.pptx`](PRESENTATION.pptx) (7-slide deck, also generated
+from the artifacts) and [`PITCH.md`](PITCH.md) (3-minute demo script plus the questions a
+quantum-literate judge will ask, with answers).
+
+```bash
+node src/make_deck.js && python src/qa_deck.py
+```
+
+`qa_deck.py` checks the deck for off-slide shapes, tight margins, overlapping text boxes and
+text that will not fit its container — this machine has no LibreOffice, so the deck cannot be
+rendered to images for visual inspection and the geometry is checked numerically instead.
+
 Deliverable 2 is deliberately **one** module. The brief says "a single, well-scoped quantum
 component", and *Feasibility* rewards being well-scoped — a second quantum component would cost
 points, not earn them.
