@@ -86,6 +86,29 @@ Launch the demo:
 .venv/Scripts/streamlit run app.py
 ```
 
+## Tests
+
+```bash
+.venv/Scripts/python.exe -m pytest tests -q
+```
+
+19 tests. The fast 16 run in ~7 s; three more exercise the QAOA solver and are marked `slow`
+(`pytest tests -m slow`). The load-bearing one is
+`test_bruteforce_matches_qubo_diagonalisation` — if the converter's penalty weights were
+wrong, exhaustive enumeration and exact diagonalisation of the QUBO would disagree and every
+downstream number in this repo would be meaningless.
+
+CI additionally asserts that regenerating the Deliverable-4 documents is a **no-op**: if a
+page has drifted from the experiment it reports, the build fails.
+
+## Hardware readiness
+
+The brief scopes us to a simulator, but "would this run on a real device?" has a measurable
+answer. `src/noise_ablation.py` sweeps a depolarizing two-qubit gate error and reports the
+error rate at which QAOA's approximation ratio falls below the classical heuristic — i.e. the
+gate fidelity this circuit would need to be worth running. Noisy simulation is ~24× slower
+than noiseless, so the sweep uses 12 qubits and p=1.
+
 ## Design decisions worth defending to a judge
 
 **Why quantum here at all?** Subset selection under a budget is a 0-1 knapsack — weakly

@@ -1,0 +1,48 @@
+name: tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned stack
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      # artifacts/scored_applicants.csv is committed, but regenerate it so CI also proves
+      # the model trains from a clean checkout and the UCI download still works.
+      - name: Train the AI model
+        run: python src/ai_model.py
+
+      - name: Run tests (fast)
+        run: pytest tests -q
+
+      - name: Run tests (QAOA)
+        run: pytest tests -q -m slow
+
+      - name: Rebuild the generated deliverables
+        run: |
+          python src/figures.py
+          python src/make_deliverable4.py
+          python src/make_onepager.py
+
+      # Every number in the Deliverable-4 documents is generated from the committed CSVs,
+      # so regenerating them must be a no-op. If this step fails, a page has drifted from
+      # the experiment it claims to report.
+      - name: Deliverables must be reproducible
+        run: |
+          git diff --exit-code -- DELIVERABLE_4.md DELIVERABLE_4.html \
+            || (echo "::error::Generated deliverables differ from the committed ones" && exit 1)

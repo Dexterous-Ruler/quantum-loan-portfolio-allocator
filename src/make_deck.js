@@ -59,7 +59,7 @@ const BODY = "Calibri";
 
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE"; // 13.3 x 7.5
-pres.author = "Quantum AI Hackathon";
+pres.author = "Team ASTITWA";
 pres.title = "Quantum-Assisted Loan-Portfolio Allocator";
 
 const M = 0.6; // page margin
@@ -129,7 +129,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
   s.addShape(pres.ShapeType.line, {
     x: M, y: 5.45, w: 3.2, h: 0, line: { color: AMBER, width: 2.5 },
   });
-  s.addText("Team name  ·  Members  ·  29 August 2026", {
+  s.addText("Team ASTITWA  ·  Tanishq Aryan  ·  29 August 2026", {
     x: M, y: 5.7, w: 10, h: 0.34, isTextBox: true, margin: 0,
     fontFace: BODY, fontSize: 12, color: ICE,
   });

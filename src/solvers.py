@@ -83,6 +83,24 @@ def solve_numpy_eigensolver(p: pf.PortfolioProblem) -> Solution:
 # ---------------------------------------------------------------- quantum
 
 
+def depolarizing_noise(two_qubit_error: float, one_qubit_ratio: float = 0.1):
+    """A deliberately simple depolarizing model, parameterised by 2-qubit gate error.
+
+    Not a device-accurate model of any specific machine -- it is a controlled knob for
+    answering "how much gate error can this circuit absorb before the answer is worthless?"
+    Single-qubit error is set to a fixed fraction of the two-qubit error, which is the
+    right order of magnitude for current superconducting hardware.
+    """
+    from qiskit_aer.noise import NoiseModel, depolarizing_error
+
+    nm = NoiseModel()
+    nm.add_all_qubit_quantum_error(
+        depolarizing_error(two_qubit_error * one_qubit_ratio, 1), ["u", "rz", "sx", "x", "h"]
+    )
+    nm.add_all_qubit_quantum_error(depolarizing_error(two_qubit_error, 2), ["cx", "cz", "ecr"])
+    return nm
+
+
 def solve_qaoa(
     p: pf.PortfolioProblem,
     reps: int = 2,
@@ -90,6 +108,7 @@ def solve_qaoa(
     shots: int = 2048,
     seed: int = 42,
     top_k: int = 5,
+    two_qubit_error: float | None = None,
 ) -> Solution:
     """QAOA on the portfolio QUBO.
 
@@ -100,7 +119,10 @@ def solve_qaoa(
     t0 = time.perf_counter()
     qp = pf.to_quadratic_program(p)
 
-    sampler = SamplerV2(seed=seed, default_shots=shots)
+    options = None
+    if two_qubit_error:
+        options = {"backend_options": {"noise_model": depolarizing_noise(two_qubit_error)}}
+    sampler = SamplerV2(seed=seed, default_shots=shots, options=options)
     # Aer's SamplerV2 warns (correctly) that an untranspiled circuit may fail. Supplying an
     # explicit pass manager makes the ansatz target the simulator's real basis gates instead
     # of relying on implicit handling -- and keeps the demo console clean.

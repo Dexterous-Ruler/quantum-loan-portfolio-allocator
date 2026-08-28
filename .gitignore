@@ -9,6 +9,7 @@ data/
 # transient logs (results CSVs and figures ARE committed - they are the evidence)
 artifacts/bench_log.txt
 artifacts/app_log.txt
+artifacts/noise_log.txt
 
 # local tooling config
 .claude/

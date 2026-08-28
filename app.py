@@ -159,10 +159,18 @@ cmp = pd.DataFrame([
      "wall clock (s)": s.seconds, "feasible": s.feasible}
     for s in (exact, greedy, q)
 ])
-st.dataframe(
-    cmp.style.format({"objective": "{:,.2f}", "approx ratio": "{:.4f}", "wall clock (s)": "{:.3f}"}),
-    use_container_width=True, hide_index=True,
-)
+ccol, bcol = st.columns([3, 2])
+with ccol:
+    st.dataframe(
+        cmp.style.format({"objective": "{:,.2f}", "approx ratio": "{:.4f}", "wall clock (s)": "{:.3f}"}),
+        use_container_width=True, hide_index=True,
+    )
+with bcol:
+    # Log scale: the runtimes span four orders of magnitude, so a linear bar chart would
+    # render the two classical solvers as invisible slivers.
+    st.bar_chart(cmp.set_index("solver")[["wall clock (s)"]], height=180, use_container_width=True)
+    st.caption("Wall clock per solve — note the classical bars are not missing, they are ~0.02 s and ~0.0001 s.")
+
 if q.objective >= exact.objective - 1e-6:
     st.success("QAOA reached the exact optimum on this instance.")
 else:
@@ -170,6 +178,17 @@ else:
 st.caption(
     "Classical exact search is orders of magnitude faster at this size and always optimal. "
     "We are demonstrating the mapping and measuring where it breaks, not claiming advantage at 14 qubits."
+)
+
+export = sel.copy()
+export.insert(0, "instance_seed", int(seed))
+export["budget_units"] = problem.budget_units
+export["fairness_lambda"] = problem.fairness_lambda
+st.download_button(
+    "Download this portfolio (CSV)",
+    export.to_csv(index=False).encode(),
+    file_name=f"portfolio_seed{int(seed)}_budget{problem.budget_units}.csv",
+    mime="text/csv",
 )
 
 # ------------------------------------------------------------------ show your work

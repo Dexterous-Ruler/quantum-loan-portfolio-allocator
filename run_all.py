@@ -2,8 +2,9 @@
 
     .venv/Scripts/python.exe run_all.py
 
-Roughly 12 minutes, dominated by the benchmark. Use --fast to skip the benchmark and
-regenerate only the figures and pages from existing CSVs.
+Roughly 30 minutes: ~12 for the benchmark, ~17 for the noise ablation (noisy simulation is
+about 24x slower than noiseless). Use --fast to skip both and regenerate only the figures
+and pages from existing CSVs.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ if not Path(PY).exists():  # non-Windows or system interpreter
 STEPS = [
     ("Train AI model (Deliverable 1)", "src/ai_model.py", False),
     ("Benchmark QAOA vs classical", "src/benchmark.py", True),
+    ("Noise ablation (hardware-readiness sweep)", "src/noise_ablation.py", True),
     ("Render figures", "src/figures.py", False),
     ("Write DELIVERABLE_4.md", "src/make_deliverable4.py", False),
     ("Write DELIVERABLE_4.html (the one-pager)", "src/make_onepager.py", False),
