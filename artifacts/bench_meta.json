@@ -1,0 +1,12 @@
+{
+  "seeds": 8,
+  "depths": [
+    1,
+    2,
+    3
+  ],
+  "pool_n": 10,
+  "shots": 2048,
+  "maxiter": 200,
+  "qaoa_repeats": 3
+}

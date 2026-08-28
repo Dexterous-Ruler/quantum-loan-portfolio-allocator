@@ -1,0 +1,14 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+
+# re-downloaded on first run by src/data.py
+data/
+
+# transient logs (results CSVs and figures ARE committed - they are the evidence)
+artifacts/bench_log.txt
+artifacts/app_log.txt
+
+# local tooling config
+.claude/

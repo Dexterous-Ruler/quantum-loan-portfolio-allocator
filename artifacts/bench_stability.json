@@ -1,0 +1,5 @@
+{
+  "within_cell_ar_std": 0.023558387299474026,
+  "between_depth_ar_std": 0.016006181090199613,
+  "depth_ranking_is_noise": true
+}
