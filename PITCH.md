@@ -49,7 +49,7 @@ why we scoped it here."
 Yes, at n=10. We're not claiming advantage at this scale — the brief says small qubit counts,
 simulator only, and we stayed inside it deliberately. What we're demonstrating is a correct
 end-to-end mapping and an honest measurement of where it breaks. The crossover for QAOA on
-combinatorial problems is understood to be hundreds of qubits.
+combinatorial problems is hundreds of qubits (Guerreschi & Matsuura, Sci. Rep. 9:6903, 2019).
 
 **"Your objective is linear. Where's the quadratic structure?"**
 Two places. The budget inequality becomes a squared penalty under `QuadraticProgramToQubo`, and

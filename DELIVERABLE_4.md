@@ -154,8 +154,9 @@ pooled approximation ratio 0.9779 against the greedy heuristic's 0.9921,
 though it reaches the exact optimum more often (79% at QAOA p=3 vs
 62%) at the cost of a worse tail. **We are reporting a negative result, and
 that is the point** — the measurement is trustworthy precisely because it did not come out the
-way we wanted. We are not claiming advantage at 14 qubits; published analysis
-puts the QAOA crossover for combinatorial problems at hundreds of qubits. What we demonstrate is
+way we wanted. We are not claiming advantage at 14 qubits; published analysis puts the QAOA
+crossover for combinatorial problems at hundreds of qubits (Guerreschi & Matsuura,
+*Sci. Rep.* **9**, 6903 (2019), doi:10.1038/s41598-019-43176-9). What we demonstrate is
 a correct end-to-end mapping — calibrated ML output → QUBO → Ising Hamiltonian → variational
 circuit → measured portfolio — and an honest measurement of exactly where it stops working, which
 is what the "small qubit counts, simulator only" scope asks for.

@@ -159,8 +159,9 @@ def main() -> None:
   {best_hit.solver} vs {greedy.hit_rate:.0%}) at the cost of a worse tail (worst QAOA run
   {q_tail:.4f} vs greedy's {greedy.ar_min:.4f}). <b>This is a negative result and that is the
   point</b> &mdash; it is trustworthy precisely because it did not come out the way we wanted. We claim no
-  advantage at 14 qubits &mdash; published analysis puts the QAOA crossover for combinatorial problems
-  at hundreds of qubits, and the brief's scope is explicitly small qubit counts on a simulator.
+  advantage at 14 qubits &mdash; Guerreschi &amp; Matsuura (<i>Sci. Rep.</i> <b>9</b>, 6903, 2019;
+  doi:10.1038/s41598-019-43176-9) put the QAOA crossover for combinatorial problems at hundreds of
+  qubits, and the brief's scope is explicitly small qubit counts on a simulator.
   What we demonstrate is a correct end-to-end mapping &mdash; calibrated ML output &rarr; QUBO &rarr;
   Ising Hamiltonian &rarr; variational circuit &rarr; measured portfolio &mdash; plus an honest
   measurement of where it breaks. One thing QAOA gives that exact search structurally cannot: a

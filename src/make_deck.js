@@ -181,7 +181,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
       { text: "Small qubit counts, simulator only.", options: { bullet: true, breakLine: true } },
       { text: "One quantum module, well-scoped.", options: { bullet: true, breakLine: true } },
       { text: "So we stayed at 10-16 qubits and measured exactly where the method stops working.", options: { bullet: true, breakLine: true } },
-      { text: "We claim no advantage at this scale. The crossover is hundreds of qubits.", options: { bullet: true } },
+      { text: "We claim no advantage at this scale. Guerreschi & Matsuura (Sci. Rep. 9:6903, 2019) put the crossover at hundreds of qubits.", options: { bullet: true } },
     ],
     {
       x: 8.76, y: 2.45, w: 3.7, h: 3.3, isTextBox: true, margin: 0,
