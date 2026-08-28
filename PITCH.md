@@ -81,6 +81,15 @@ and measured it properly: the spread within a single cell is as large as the spr
 depths. At this scale the depth ranking is optimiser-seed luck. Anyone showing you a
 single-seed table with a "best depth" is reporting noise — we nearly did.
 
+**"Would this work on real hardware?"**
+We measured it, and the useful answer is about measurement rather than hardware. The default
+readout — best of 2048 shots — returns the exact optimum even at 2% depolarizing error across
+182 two-qubit gates, where no coherent signal should survive. At 12 qubits a near-uniform
+distribution still hits the optimum by chance within 2048 draws. So `MinimumEigenOptimizer`'s
+default statistic reports false robustness. As for the actual degradation curve: our
+within-level scatter is 7× the between-level spread, so we report the sweep as inconclusive.
+Resolving it would take ~220 seeds per level, about 19 hours of noisy simulation.
+
 **"Is your AI model any good?"**
 AUC 0.777 calibrated GBM. Tuned logistic regression actually beats it at 0.799 — expected at
 n=1000 — and we report that. For this pipeline calibration matters more than discrimination,

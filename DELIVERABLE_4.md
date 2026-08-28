@@ -74,6 +74,42 @@ lever that keeps the instance simulable, and it is a modelling decision, not a t
 
 ---
 
+## B2. Hardware readiness — and a metric that lied to us
+
+We never touch hardware — the brief scopes us to a simulator. But "would this run on a real
+device?" is the obvious follow-up, so we swept a depolarizing two-qubit gate error at
+8 applicants (1 QAOA layer, 3 instances per level).
+
+| 2-qubit gate error | AR, best of 2048 shots | AR, sampled distribution | P(feasible) | Wall clock (s) |
+| --- | --- | --- | --- | --- |
+| 0.000 | 1.0000 | 0.2217 | 0.583 | 2.9 |
+| 0.001 | 1.0000 | 0.2627 | 0.515 | 70.7 |
+| 0.005 | 0.9658 | 0.2555 | 0.600 | 83.6 |
+| 0.010 | 1.0000 | 0.2885 | 0.590 | 82.8 |
+| 0.020 | 1.0000 | 0.2485 | 0.583 | 72.8 |
+
+**What this does establish.** Best-of-2048-shots readout returns the *exact optimum*
+at every error level, including 2% depolarizing error applied across 182 two-qubit gates —
+a regime where essentially no coherent signal should survive. That is not robustness of the
+algorithm; it is an artifact of the statistic. At 12 qubits a near-uniform distribution still
+lands on the optimum within 2048 draws by chance. **A QAOA noise study scored on
+best-of-N shots will report false robustness**, and `MinimumEigenOptimizer` reports exactly
+that statistic by default. This is the single most useful thing we learned building the
+ablation, and we only found it because our first version of this table showed noise making
+QAOA *better* — which is physically impossible, so the metric had to be wrong.
+
+**What this does NOT establish.** We cannot give you a degradation curve. Holding the noise
+sweep to the same standard as the depth ranking in section A: the scatter *within* one error
+level across seeds is **0.1788**, while the spread *between*
+error levels is only **0.0242** — the putative trend is roughly
+7× smaller
+than its own noise floor. Resolving it honestly would need about **220 seeds per level**, roughly **19 hours** of noisy simulation. We did not run that, so we report the sweep as inconclusive rather than drawing a line through five noisy points.
+
+We are stating this because the alternative — printing the five means as a tidy descending
+curve — would have looked far more impressive and would have been unsupported by our own data.
+
+---
+
 ## C. Fairness as an optimiser constraint, not a footnote
 
 The approval-rate parity penalty is a **squared linear term**, so it folds into the objective

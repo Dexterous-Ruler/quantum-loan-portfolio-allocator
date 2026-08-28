@@ -1,0 +1,17 @@
+{
+  "noiseless_ar_best": 1.0,
+  "noiseless_ar_dist": 0.22167170522273416,
+  "worst_ar_dist": 0.22167170522273416,
+  "ar_best_range_across_noise": 0.034237481576612105,
+  "ar_dist_range_across_noise": 0.06681334713628101,
+  "best_of_shots_is_noise_blind": true,
+  "ar_dist_within_level_std": 0.17880249438762486,
+  "ar_dist_between_level_std": 0.024154309866122062,
+  "noise_trend_exceeds_noise_floor": false,
+  "seeds_per_level_needed_to_resolve": 220,
+  "hours_needed_to_resolve": 19.109288423703887,
+  "pool_n": 8,
+  "reps": 1,
+  "seeds": 3,
+  "shots": 2048
+}

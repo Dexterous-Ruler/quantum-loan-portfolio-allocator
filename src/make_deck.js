@@ -338,7 +338,41 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
   s.addNotes("Anyone showing a single-seed depth ranking is reporting noise. We were, until we checked.");
 }
 
-// ---------------------------------------------------------------- 7. bottom line
+// ---------------------------------------------------------------- 7. noise / metric
+{
+  const nm = JSON.parse(fs.readFileSync(path.join(ART, "bench_noise_meta.json"), "utf8"));
+  const s = pres.addSlide();
+  titleBar(s, "Would this survive on real hardware?", "And the metric that lied to us");
+  s.addImage({ path: path.join(FIGS, "noise.png"), x: M, y: 1.72, w: 6.5, h: 3.78 });
+
+  s.addText("Best-of-2048-shots says yes. It is wrong.", {
+    x: 7.5, y: 1.78, w: 5.2, h: 0.36, isTextBox: true, margin: 0,
+    fontFace: BODY, fontSize: 14, bold: true, color: NAVY,
+  });
+  s.addText(
+    "The default readout returns the exact optimum even at 2% depolarizing error across 182 two-qubit gates — a regime where no coherent signal should survive. At 12 qubits a near-uniform distribution still lands on the optimum by chance within 2048 draws. That is an artifact of the statistic, not robustness of the algorithm.",
+    { x: 7.5, y: 2.22, w: 5.2, h: 1.5, isTextBox: true, margin: 0, fontFace: BODY, fontSize: 11.5, color: MUTED }
+  );
+
+  stat(s, {
+    x: 7.5, y: 3.85, w: 2.5,
+    n: `${(nm.ar_dist_within_level_std / Math.max(nm.ar_dist_between_level_std, 1e-9)).toFixed(0)}×`,
+    label: "Scatter exceeds the trend", color: AMBER,
+  });
+  stat(s, {
+    x: 10.2, y: 3.85, w: 2.5, n: `${nm.seeds_per_level_needed_to_resolve}`,
+    label: "Seeds/level needed to resolve it", sub: `~${Math.round(nm.hours_needed_to_resolve)} h of simulation`,
+  });
+
+  card(s, { x: 7.5, y: 5.65, w: 5.2, h: 0.95, fill: NAVY });
+  s.addText(
+    "So we report the sweep as inconclusive. Drawing a tidy curve through five noisy points would have looked better and been unsupported.",
+    { x: 7.74, y: 5.83, w: 4.75, h: 0.62, isTextBox: true, margin: 0, fontFace: BODY, fontSize: 11, italic: true, color: ICE }
+  );
+  s.addNotes("We found this because our first table showed noise making QAOA BETTER, which is impossible -- so the metric had to be wrong. Anyone reporting that their variational circuit shrugged off 2% gate error is probably reading the same statistic.");
+}
+
+// ---------------------------------------------------------------- 8. bottom line
 {
   const s = pres.addSlide();
   s.background = { color: NAVY };

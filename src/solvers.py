@@ -140,13 +140,36 @@ def solve_qaoa(
         if len(alts) >= top_k:
             break
 
+    # Distribution-level quality, not just the single best bitstring.
+    #
+    # MinimumEigenOptimizer reports the best sample out of `shots`. That statistic is
+    # almost blind to noise: at this qubit count even a near-uniform distribution still
+    # hits the optimum within 2048 draws, so a noise sweep scored on best-of-N shows no
+    # degradation at all (we measured exactly that, and it is why these two metrics exist).
+    # The expected objective over the sampled distribution IS sensitive to noise, because
+    # it is the whole distribution that flattens as fidelity drops.
+    tot_p, feas_p, exp_obj = 0.0, 0.0, 0.0
+    for s in res.samples:
+        x = np.asarray(s.x[: p.n], dtype=int)
+        pr = float(s.probability)
+        tot_p += pr
+        if p.is_feasible(x):
+            feas_p += pr
+            exp_obj += pr * p.objective(x)
+
     _, offset = to_ising(pf.QuadraticProgramToQubo().convert(qp))
     return _finish(
         f"QAOA (p={reps})",
         np.asarray(res.x[: p.n], dtype=int),
         p,
         t0,
-        {"reps": reps, "shots": shots, "maxiter": maxiter, "alternatives": alts, "ising_offset": float(offset)},
+        {
+            "reps": reps, "shots": shots, "maxiter": maxiter, "alternatives": alts,
+            "ising_offset": float(offset),
+            "feasible_probability": feas_p / tot_p if tot_p else 0.0,
+            "expected_objective": exp_obj / feas_p if feas_p else float("nan"),
+            "noise_two_qubit_error": two_qubit_error,
+        },
     )
 
 

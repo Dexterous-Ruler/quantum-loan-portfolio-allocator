@@ -146,10 +146,49 @@ def fig_calibration() -> Path:
     return out
 
 
+def fig_noise() -> Path | None:
+    """How much gate error can the circuit absorb -- and why the obvious metric lies.
+
+    Plots both readout metrics against two-qubit gate error. Best-of-shots is flat
+    (it is noise-blind at this size); the distribution's expected objective is not.
+    """
+    src = ARTIFACTS / "bench_noise_summary.csv"
+    if not src.exists():
+        return None
+    s = pd.read_csv(src)
+    raw = pd.read_csv(ARTIFACTS / "bench_noise.csv")
+
+    fig, ax = plt.subplots(figsize=(6.2, 3.6), dpi=160)
+    x = s.two_qubit_error * 100
+
+    # Plot every individual run behind the means. The scatter is the point of this figure:
+    # it is what makes the apparent trend in the means unsupportable.
+    ax.scatter(raw.two_qubit_error * 100, raw.ar_dist, s=26, alpha=0.45,
+               color=QCOL, edgecolor="none", zorder=2, label="Individual runs (distribution AR)")
+    ax.plot(x, s.ar_best_mean, "s--", color=CCOL, linewidth=2, zorder=4,
+            label="Best of 2048 shots — pinned at the optimum")
+    ax.plot(x, s.ar_dist_mean, "o-", color=QCOL, linewidth=2, zorder=3,
+            label="Distribution AR, mean")
+    ax.set_xlabel("Two-qubit depolarizing gate error (%)")
+    ax.set_ylabel("Approximation ratio")
+    ax.set_ylim(0, 1.12)
+    ax.set_title("Best-of-N readout is blind to noise — and the scatter is too\n"
+                 "wide to claim a degradation curve from 3 seeds",
+                 fontsize=10, loc="left")
+    ax.legend(fontsize=7.5, frameon=False, loc="center left")
+    _style(ax)
+    fig.tight_layout()
+    out = FIGS / "noise.png"
+    fig.savefig(out)
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     FIGS.mkdir(parents=True, exist_ok=True)
-    for fn in (fig_quality, fig_scaling, fig_fairness, fig_calibration):
-        print("wrote", fn().relative_to(ROOT))
+    for fn in (fig_quality, fig_scaling, fig_fairness, fig_calibration, fig_noise):
+        out = fn()
+        print("wrote", out.relative_to(ROOT) if out else f"(skipped {fn.__name__}: no data yet)")
 
 
 if __name__ == "__main__":

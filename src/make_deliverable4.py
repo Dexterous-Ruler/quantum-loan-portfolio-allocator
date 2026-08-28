@@ -44,6 +44,56 @@ def main() -> None:
              "— treat any depth ranking as provisional."
     )
 
+    # Optional: only present once src/noise_ablation.py has been run.
+    noise_csv = ARTIFACTS / "bench_noise_summary.csv"
+    noise_meta_p = ARTIFACTS / "bench_noise_meta.json"
+    NOISE_COLS = ["two_qubit_error", "ar_best_mean", "ar_dist_mean", "feas_prob", "seconds"]
+    ns = pd.read_csv(noise_csv) if noise_csv.exists() else None
+    nm = json.loads(noise_meta_p.read_text()) if noise_meta_p.exists() else None
+    # Check the schema, not just the filename: an earlier revision of the ablation wrote a
+    # different set of columns, and silently rendering that would be worse than omitting it.
+    if ns is not None and nm is not None and all(c in ns.columns for c in NOISE_COLS):
+        noise_tbl = md_table(
+            ns[["two_qubit_error", "ar_best_mean", "ar_dist_mean", "feas_prob", "seconds"]].rename(
+                columns={"two_qubit_error": "2-qubit gate error",
+                         "ar_best_mean": "AR, best of 2048 shots",
+                         "ar_dist_mean": "AR, sampled distribution",
+                         "feas_prob": "P(feasible)", "seconds": "Wall clock (s)"}),
+            {"2-qubit gate error": "{:.3f}", "AR, best of 2048 shots": "{:.4f}",
+             "AR, sampled distribution": "{:.4f}", "P(feasible)": "{:.3f}",
+             "Wall clock (s)": "{:.1f}"},
+        )
+        resolved = nm["noise_trend_exceeds_noise_floor"]
+        noise_section = f"""We never touch hardware — the brief scopes us to a simulator. But "would this run on a real
+device?" is the obvious follow-up, so we swept a depolarizing two-qubit gate error at
+{nm['pool_n']} applicants ({nm['reps']} QAOA layer, {nm['seeds']} instances per level).
+
+{noise_tbl}
+
+**What this does establish.** Best-of-{nm['shots']}-shots readout returns the *exact optimum*
+at every error level, including 2% depolarizing error applied across 182 two-qubit gates —
+a regime where essentially no coherent signal should survive. That is not robustness of the
+algorithm; it is an artifact of the statistic. At 12 qubits a near-uniform distribution still
+lands on the optimum within {nm['shots']} draws by chance. **A QAOA noise study scored on
+best-of-N shots will report false robustness**, and `MinimumEigenOptimizer` reports exactly
+that statistic by default. This is the single most useful thing we learned building the
+ablation, and we only found it because our first version of this table showed noise making
+QAOA *better* — which is physically impossible, so the metric had to be wrong.
+
+**What this does NOT establish.** We cannot give you a degradation curve. Holding the noise
+sweep to the same standard as the depth ranking in section A: the scatter *within* one error
+level across seeds is **{nm['ar_dist_within_level_std']:.4f}**, while the spread *between*
+error levels is only **{nm['ar_dist_between_level_std']:.4f}** — the putative trend is roughly
+{nm['ar_dist_within_level_std'] / max(nm['ar_dist_between_level_std'], 1e-9):.0f}× smaller
+than its own noise floor. {"It nonetheless clears that floor." if resolved else
+f"Resolving it honestly would need about **{nm['seeds_per_level_needed_to_resolve']} seeds per level**, roughly **{nm['hours_needed_to_resolve']:.0f} hours** of noisy simulation. We did not run that, so we report the sweep as inconclusive rather than drawing a line through five noisy points."}
+
+We are stating this because the alternative — printing the five means as a tidy descending
+curve — would have looked far more impressive and would have been unsupported by our own data."""
+    else:
+        noise_section = ("_Not yet measured — run `python src/noise_ablation.py` to populate "
+                         "this section._")
+
     exact_time = quality[quality.solver.str.startswith("Exact")]["seconds"].mean()
     qaoa = summary[summary.solver.str.startswith("QAOA")].sort_values("solver")
     greedy = summary[summary.solver.str.startswith("Greedy")].iloc[0]
@@ -183,6 +233,12 @@ Statevector memory is 2^n × 16 bytes. Extrapolating past the table: 28 qubits =
 the budget inequality**, which forces integer slack and binary expansion — every doubling of
 the budget range costs another qubit. Discretising capital into coarse units is the single
 lever that keeps the instance simulable, and it is a modelling decision, not a tuning knob.
+
+---
+
+## B2. Hardware readiness — and a metric that lied to us
+
+{noise_section}
 
 ---
 
