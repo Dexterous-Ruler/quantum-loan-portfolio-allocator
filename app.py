@@ -62,7 +62,7 @@ with st.sidebar:
     fairness_lambda = st.slider("Fairness weight lambda", 0, 40000, 8000, 1000,
                                 disabled=not fairness_on)
     seed = st.number_input("Instance seed", 0, 999, 0, 1)
-    go = st.button("Optimise portfolio", type="primary", use_container_width=True)
+    go = st.button("Optimise portfolio", type="primary", width="stretch")
 
 problem = pf.build_problem(
     scored, n=pool_n, budget_fraction=budget_fraction,
@@ -85,7 +85,7 @@ view = view.rename(columns={"p_default": "P(default)", "expected_value": "expect
 st.dataframe(
     view.style.format({"P(default)": "{:.1%}", "expected value (DM)": "{:,.0f}", "credit_amount": "{:,.0f}"})
         .background_gradient(subset=["P(default)"], cmap="Reds"),
-    use_container_width=True, hide_index=True,
+    width="stretch", hide_index=True,
 )
 
 if not go:
@@ -135,7 +135,7 @@ sel = pd.DataFrame({
 })
 left, right = st.columns([3, 2])
 with left:
-    st.dataframe(sel.style.format({"expected value (DM)": "{:,.0f}"}), use_container_width=True, hide_index=True)
+    st.dataframe(sel.style.format({"expected value (DM)": "{:,.0f}"}), width="stretch", hide_index=True)
 with right:
     st.metric("Expected profit (QAOA)", f"{problem.ev @ q.x:,.0f} DM")
     st.metric("Capital deployed", f"{int(problem.units @ q.x)} / {problem.budget_units} units")
@@ -163,12 +163,13 @@ ccol, bcol = st.columns([3, 2])
 with ccol:
     st.dataframe(
         cmp.style.format({"objective": "{:,.2f}", "approx ratio": "{:.4f}", "wall clock (s)": "{:.3f}"}),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 with bcol:
-    # Log scale: the runtimes span four orders of magnitude, so a linear bar chart would
-    # render the two classical solvers as invisible slivers.
-    st.bar_chart(cmp.set_index("solver")[["wall clock (s)"]], height=180, use_container_width=True)
+    # st.bar_chart has no log scale, and the runtimes span four orders of magnitude, so the
+    # two classical bars really are invisible slivers next to QAOA. That IS the point of the
+    # chart -- but say so in the caption rather than letting it read as a rendering bug.
+    st.bar_chart(cmp.set_index("solver")[["wall clock (s)"]], height=180, width="stretch")
     st.caption("Wall clock per solve — note the classical bars are not missing, they are ~0.02 s and ~0.0001 s.")
 
 if q.objective >= exact.objective - 1e-6:
@@ -212,7 +213,7 @@ with tabs[1]:
     terms, offset, nq = solvers.hamiltonian_terms(problem)
     st.write(f"Ising Hamiltonian on **{nq} qubits**, constant offset `{offset:,.2f}`. Largest terms:")
     st.dataframe(pd.DataFrame(terms).style.format({"coeff": "{:,.3f}"}),
-                 use_container_width=True, hide_index=True)
+                 width="stretch", hide_index=True)
     st.caption(
         "ZZ terms are genuine couplings between applicants. Single-Z terms come from expected value "
         "and the budget penalty; the fairness penalty adds ZZ couplings between applicants of "
@@ -228,7 +229,7 @@ with tabs[2]:
                 {"portfolio": "".join(str(b) for b in a["x"]),
                  "objective": a["objective"], "probability": a["probability"]} for a in alts
             ]).style.format({"objective": "{:,.2f}", "probability": "{:.3%}"}),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
         st.caption(
             "Under an uncertain default forecast, a ranked set of near-optimal feasible portfolios "
