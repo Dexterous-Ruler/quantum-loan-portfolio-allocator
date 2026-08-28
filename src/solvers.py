@@ -109,6 +109,7 @@ def solve_qaoa(
     seed: int = 42,
     top_k: int = 5,
     two_qubit_error: float | None = None,
+    aggregation: float | None = None,
 ) -> Solution:
     """QAOA on the portfolio QUBO.
 
@@ -127,7 +128,13 @@ def solve_qaoa(
     # explicit pass manager makes the ansatz target the simulator's real basis gates instead
     # of relying on implicit handling -- and keeps the demo console clean.
     pm = generate_preset_pass_manager(optimization_level=1, backend=AerSimulator())
-    qaoa = QAOA(sampler=sampler, optimizer=COBYLA(maxiter=maxiter), reps=reps, pass_manager=pm)
+    # `aggregation=alpha` switches the objective from the mean over samples to the CVaR of
+    # the best alpha-fraction (Barkoutsos et al., Quantum 4, 256 (2020)), which is reported
+    # to converge faster and better on combinatorial problems. Whether it helps *here* is an
+    # empirical question -- see src/cvar_ablation.py, which measures it against its own
+    # noise floor rather than taking the literature on faith.
+    qaoa = QAOA(sampler=sampler, optimizer=COBYLA(maxiter=maxiter), reps=reps,
+                pass_manager=pm, aggregation=aggregation)
     res = MinimumEigenOptimizer(qaoa).solve(qp)
 
     # A ranked portfolio of feasible near-optimal alternatives, read off the measurement

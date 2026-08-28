@@ -155,7 +155,48 @@ conflated them and reported a misleading 9% everywhere.
 
 ---
 
-## C. Fairness as an optimiser constraint, not a footnote
+## B4. What we took from comparable work, and what we measured
+
+We surveyed comparable public work before finalising: the Qiskit Finance
+`PortfolioOptimization` tutorial, IBM's Quantum Challenge portfolio notebooks, and the
+strongest QAOA portfolio repositories on GitHub. Two ideas were worth borrowing.
+
+**Adopted: a genuine risk term.** Our objective was expected value under a budget — a knapsack,
+not a portfolio. The canonical mean-variance formulation pairs a linear return term with a
+quadratic risk term, so we added one: a Herfindahl penalty on capital concentrated in a single
+loan purpose, using the `purpose` column we had been ignoring. Sector concentration limits are
+how credit books are actually managed, loans in one sector default together, and the penalty
+introduces real ZZ couplings between same-sector applicants at **zero extra qubits**. This is
+the change that makes the problem a portfolio problem rather than item selection.
+
+**Tested and not adopted: CVaR aggregation.** Barkoutsos et al. (*Quantum* **4**, 256 (2020))
+report that aggregating QAOA samples by the Conditional Value-at-Risk of the best α-fraction,
+instead of by their mean, converges faster and better on every combinatorial problem they
+tested — and it is what the strongest comparable repositories use. It is a one-parameter change
+in Qiskit. We measured it over 24 runs per setting:
+
+| Aggregation | AR mean | AR worst | Std | Hit optimum | Sec |
+| --- | --- | --- | --- | --- | --- |
+| CVaR alpha=0.1 | 0.9815 | 0.8156 | 0.0456 | 67% | 3.9 |
+| CVaR alpha=0.25 | 0.9901 | 0.8973 | 0.0253 | 71% | 3.8 |
+| CVaR alpha=0.5 | 0.9789 | 0.7347 | 0.0636 | 75% | 3.7 |
+| mean (default) | 0.9881 | 0.8688 | 0.0308 | 62% | 3.7 |
+
+The best setting, CVaR alpha=0.25, scores 0.9901 against the default's
+0.9881 — an improvement of **+0.0020**. But the scatter within
+a single (instance, setting) cell is **0.0219**, against a spread between
+settings of only **0.0053**. The effect is roughly 4× smaller than the noise floor, so we kept the default and say so here.
+
+That is not a contradiction of the paper. CVaR's reported advantage is largest on noisy hardware
+and on problems where the mean-aggregated landscape is hard to optimise; at 14 qubits on a noise-
+free simulator the default already reaches the optimum 62% of the time, leaving
+almost nothing for a better aggregation to recover. **We report this because adopting a technique
+on the strength of its citation, without checking it helps on your own problem, is how unverified
+claims get into submissions.**
+
+---
+
+## C. Fairness and diversification as optimiser constraints, not footnotes
 
 The approval-rate parity penalty is a **squared linear term**, so it folds into the objective
 at **zero additional qubits** — and it is what makes the objective genuinely quadratic. A plain

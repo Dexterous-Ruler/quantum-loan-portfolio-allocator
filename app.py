@@ -58,6 +58,10 @@ with st.sidebar:
     # -- the apparent "best depth" flipped between benchmark runs -- so we take the cheapest
     # one rather than pretending a winner exists. See DELIVERABLE_4.md, table A.
     reps = st.select_slider("QAOA depth p", options=[1, 2, 3], value=1)
+    risk_on = st.toggle("Diversify across sectors", value=False,
+                        help="Penalises capital concentrated in one loan purpose — the "
+                             "Markowitz risk term. Adds zero qubits.")
+    risk_gamma = st.slider("Risk aversion gamma", 0, 6000, 2000, 250, disabled=not risk_on)
     fairness_on = st.toggle("Apply fairness penalty", value=False,
                             help="Penalises approval-rate disparity between groups. Adds zero qubits.")
     fairness_lambda = st.slider("Fairness weight lambda", 0, 40000, 8000, 1000,
@@ -65,9 +69,12 @@ with st.sidebar:
     seed = st.number_input("Instance seed", 0, 999, 0, 1)
     go = st.button("Optimise portfolio", type="primary", width="stretch")
 
+GAMMA = float(risk_gamma) if risk_on else 0.0
+LAMBDA = float(fairness_lambda) if fairness_on else 0.0
+
 problem = pf.build_problem(
     scored, n=pool_n, budget_fraction=budget_fraction,
-    fairness_lambda=float(fairness_lambda) if fairness_on else 0.0, seed=int(seed),
+    fairness_lambda=LAMBDA, risk_gamma=GAMMA, seed=int(seed),
 )
 _, n_qubits = pf.qubo_and_qubits(problem)
 
@@ -79,10 +86,12 @@ c4.metric("AI model AUC", f"{metrics['gbm_auc']:.3f}")
 
 # ------------------------------------------------------------------ applicants
 st.subheader("1. AI model output — risk-adjusted value per applicant")
-view = problem.meta[["credit_amount", "duration_months", "age_years", "sex", "p_default", "expected_value"]].copy()
+view = problem.meta[["credit_amount", "duration_months", "age_years", "sex", "purpose",
+                     "p_default", "expected_value"]].copy()
 view.insert(0, "applicant", [f"#{i}" for i in problem.ids])
 view["capital_units"] = problem.units
-view = view.rename(columns={"p_default": "P(default)", "expected_value": "expected value (DM)"})
+view = view.rename(columns={"p_default": "P(default)", "expected_value": "expected value (DM)",
+                            "purpose": "sector"})
 st.dataframe(
     view.style.format({"P(default)": "{:.1%}", "expected value (DM)": "{:,.0f}", "credit_amount": "{:,.0f}"})
         .background_gradient(subset=["P(default)"], cmap="Reds"),
@@ -90,14 +99,15 @@ st.dataframe(
 )
 
 @st.cache_data(show_spinner=False)
-def cached_qaoa(pool_n: int, budget_fraction: float, lam: float, seed: int, reps: int):
+def cached_qaoa(pool_n: int, budget_fraction: float, lam: float, seed: int, reps: int,
+                gamma: float = 0.0):
     """Cache by the control values, so re-showing a configuration during a demo is instant.
 
     Rebuilds the problem inside rather than taking it as an argument: Streamlit would have to
     hash the whole DataFrame otherwise.
     """
     prob = pf.build_problem(scored, n=pool_n, budget_fraction=budget_fraction,
-                            fairness_lambda=lam, seed=seed)
+                            fairness_lambda=lam, risk_gamma=gamma, seed=seed)
     s = solvers.solve_qaoa(prob, reps=reps)
     return {"x": s.x, "objective": s.objective, "seconds": s.seconds,
             "feasible": s.feasible, "extra": s.extra, "name": s.name}
@@ -130,8 +140,7 @@ greedy = solvers.solve_greedy(problem)
 
 with st.spinner(f"Running QAOA on {n_qubits} qubits (simulator)…"):
     try:
-        _q = cached_qaoa(pool_n, budget_fraction,
-                         float(fairness_lambda) if fairness_on else 0.0, int(seed), reps)
+        _q = cached_qaoa(pool_n, budget_fraction, LAMBDA, int(seed), reps, GAMMA)
     except Exception as exc:  # never let the jury see a stack trace
         st.error(f"QAOA solve failed: {exc}. Showing classical results only.")
         st.stop()
@@ -140,6 +149,7 @@ q = solvers.Solution(_q["name"], _q["x"], _q["objective"], _q["seconds"], _q["fe
 sel = pd.DataFrame({
     "applicant": [f"#{i}" for i in problem.ids],
     "sex": problem.sex,
+    "sector": problem.sector,
     "capital_units": problem.units,
     "expected value (DM)": problem.ev,
     "QAOA": np.where(q.x == 1, "FUND", "-"),
@@ -152,12 +162,26 @@ with left:
 with right:
     st.metric("Expected profit (QAOA)", f"{problem.ev @ q.x:,.0f} DM")
     st.metric("Capital deployed", f"{int(problem.units @ q.x)} / {problem.budget_units} units")
+    n_sectors = len(set(problem.sector[q.x == 1])) if problem.sector is not None else 0
+    st.metric("Concentration H", f"{problem.concentration(q.x):.3f}",
+              help="Herfindahl index of capital across loan purposes. Lower is more "
+                   "diversified; 1.0 means everything sits in one sector.",
+              delta=f"{n_sectors} sectors funded", delta_color="off")
     gap = problem.parity_gap(q.x)
     st.metric("Approval-rate gap (F - M)", f"{gap:+.1%}",
               delta=None if not fairness_on else "fairness penalty active")
+    if problem.risk_gamma > 0:
+        flat = pf.build_problem(scored, n=pool_n, budget_fraction=budget_fraction,
+                                fairness_lambda=LAMBDA, risk_gamma=0.0, seed=int(seed))
+        fb = solvers.solve_bruteforce(flat)
+        st.caption(
+            f"Without diversification the optimum earns {flat.ev @ fb.x:,.0f} DM at "
+            f"H={flat.concentration(fb.x):.3f}. Diversifying costs "
+            f"{(flat.ev @ fb.x) - (problem.ev @ q.x):,.0f} DM."
+        )
     if problem.fairness_lambda > 0:
         base = pf.build_problem(scored, n=pool_n, budget_fraction=budget_fraction,
-                                fairness_lambda=0.0, seed=int(seed))
+                                fairness_lambda=0.0, risk_gamma=GAMMA, seed=int(seed))
         b = solvers.solve_bruteforce(base)
         st.caption(
             f"Unconstrained optimum would earn {base.ev @ b.x:,.0f} DM at a "
@@ -177,7 +201,7 @@ def _bare(ax):
 
 
 @st.cache_data(show_spinner=False)
-def budget_sweep(pool_n: int, lam: float, seed: int):
+def budget_sweep(pool_n: int, lam: float, seed: int, gamma: float = 0.0):
     """Optimal profit at every budget level, by exact enumeration.
 
     Cheap enough to compute live (2^n per budget, n <= 12) and it shows the optimiser
@@ -187,7 +211,7 @@ def budget_sweep(pool_n: int, lam: float, seed: int):
     out = []
     for f in fracs:
         pr = pf.build_problem(scored, n=pool_n, budget_fraction=float(f),
-                              fairness_lambda=lam, seed=seed)
+                              fairness_lambda=lam, risk_gamma=gamma, seed=seed)
         x = solvers.solve_bruteforce(pr).x
         out.append((pr.budget_units, float(pr.ev @ x), int(x.sum())))
     # Several fractions can round to the same integer budget; keep the best per budget.
@@ -227,7 +251,7 @@ with vcol1:
     plt.close(fig)
 
 with vcol2:
-    bs, profits, counts = budget_sweep(pool_n, problem.fairness_lambda, int(seed))
+    bs, profits, counts = budget_sweep(pool_n, LAMBDA, int(seed), GAMMA)
     fig, ax = plt.subplots(figsize=(5.2, 3.4), dpi=140)
     ax.plot(bs, profits, "o-", color=QCOL, linewidth=2, markersize=4, zorder=3)
     here = problem.ev @ q.x

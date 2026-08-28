@@ -1,0 +1,14 @@
+{
+  "baseline_ar": 0.9881209033585373,
+  "baseline_hit": 0.625,
+  "best_label": "CVaR alpha=0.25",
+  "best_ar": 0.9901019021249455,
+  "best_hit": 0.7083333333333334,
+  "improvement": 0.0019809987664082263,
+  "within_cell_std": 0.021890842572846687,
+  "between_setting_std": 0.00530536255373279,
+  "effect_exceeds_noise_floor": false,
+  "seeds": 8,
+  "repeats": 3,
+  "runs_per_setting": 24
+}

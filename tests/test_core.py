@@ -156,6 +156,40 @@ def test_hamiltonian_is_well_formed(problem):
     assert all(len(t["pauli"]) == nq for t in terms)
 
 
+def test_risk_term_costs_no_qubits(scored):
+    plain = pf.build_problem(scored, n=10, risk_gamma=0.0, seed=0)
+    risky = pf.build_problem(scored, n=10, risk_gamma=5000.0, seed=0)
+    assert pf.qubo_and_qubits(plain)[1] == pf.qubo_and_qubits(risky)[1]
+
+
+def test_risk_term_reduces_concentration(scored):
+    """The headline claim for the diversification term, as an assertion."""
+    hs = []
+    for gamma in (0.0, 3000.0):
+        per_seed = []
+        for seed in range(5):
+            p = pf.build_problem(scored, n=10, risk_gamma=gamma, seed=seed)
+            per_seed.append(p.concentration(solvers.solve_bruteforce(p).x))
+        hs.append(np.mean(per_seed))
+    assert hs[1] < hs[0], f"risk penalty did not reduce concentration: {hs}"
+
+
+@pytest.mark.parametrize("gamma,lam", [(1000.0, 0.0), (0.0, 8000.0), (2000.0, 8000.0)])
+def test_qubo_matches_bruteforce_with_penalties(scored, gamma, lam):
+    """The risk and fairness penalties must survive the QUBO translation intact.
+
+    Both are expanded by hand into linear and quadratic coefficients, so an algebra slip
+    would silently produce a Hamiltonian for a different problem. Exhaustive enumeration
+    of the Python objective is the independent check.
+    """
+    for seed in range(3):
+        p = pf.build_problem(scored, n=8, risk_gamma=gamma, fairness_lambda=lam, seed=seed)
+        brute = solvers.solve_bruteforce(p)
+        eig = solvers.solve_numpy_eigensolver(p)
+        assert brute.objective == pytest.approx(eig.objective, abs=1e-6)
+        assert np.array_equal(brute.x, eig.x)
+
+
 def test_portfolio_depends_only_on_lgd_over_apr(scored):
     """Scaling APR and LGD together must not change the chosen portfolio.
 

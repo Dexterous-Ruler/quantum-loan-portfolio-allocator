@@ -9,8 +9,13 @@ Formulation
 Decision variables:  x_i in {0,1}, "fund applicant i".
 
     maximise    sum_i  EV_i * x_i                       (risk-adjusted profit)
+                - gamma  * concentration(x)             (sector diversification)
                 - lambda * parity_gap(x)^2              (fairness penalty)
     subject to  sum_i  units_i * x_i  <=  budget_units  (capital budget)
+
+This is the mean-variance shape of the classic portfolio problem: a linear return term
+against a quadratic risk term, with gamma as Markowitz's risk-aversion parameter. Without
+the risk term it would be a knapsack -- item selection, not portfolio construction.
 
 Two modelling choices worth defending to a judge:
 
@@ -19,12 +24,13 @@ Two modelling choices worth defending to a judge:
    extra qubits. That is why we discretise capital into coarse units -- it is the
    single lever that controls qubit count.
 
-2. The fairness term is a SOFT PENALTY, not a constraint. This is deliberate and it
-   costs zero extra qubits. It also changes the physics: a plain knapsack objective is
-   linear, so all the quadratic structure would come from the constraint penalty alone.
-   The squared parity gap introduces genuine ZZ couplings between applicants of opposite
-   groups -- pairs of applicants now interact in the Hamiltonian. The problem is
-   quadratic by construction, not by accident.
+2. Both the diversification and fairness terms are SOFT PENALTIES, not constraints. That
+   is deliberate: each is a squared linear form, so it folds into the objective at ZERO
+   extra qubits, where a second inequality constraint would have cost slack variables.
+   They also change the physics. A plain knapsack objective is linear, so all the
+   quadratic structure would come from the budget penalty alone. The concentration term
+   couples applicants in the SAME sector; the parity term couples applicants in OPPOSITE
+   groups. The problem is quadratic by construction, not by accident.
 """
 from __future__ import annotations
 
@@ -49,11 +55,32 @@ class PortfolioProblem:
     budget_units: int
     sex: np.ndarray               # protected attribute, for the fairness term
     fairness_lambda: float = 0.0
+    sector: np.ndarray | None = None   # loan purpose, for the concentration term
+    risk_gamma: float = 0.0
     meta: pd.DataFrame | None = field(default=None, repr=False)
 
     @property
     def n(self) -> int:
         return len(self.ids)
+
+    def concentration(self, x: np.ndarray) -> float:
+        """Herfindahl concentration of capital across loan purposes.
+
+        Without this the objective is a pure knapsack -- maximise expected value, ignore
+        how the exposure is distributed. That is not portfolio optimisation, it is item
+        selection. Real credit books are managed against sector concentration limits
+        precisely because loans in the same sector default together, so a book that is
+        optimal on expected value alone can be one downturn away from failing.
+
+        H(x) = sum_s ( sum_{i in sector s} w_i x_i )^2,  with w_i the exposure share.
+        H = 1 means everything sits in one sector; H = 1/S means perfectly spread.
+        """
+        if self.sector is None:
+            return 0.0
+        x = np.asarray(x, dtype=float)
+        w = self.units / max(self.budget_units, 1)
+        return float(sum((w[self.sector == s] @ x[self.sector == s]) ** 2
+                         for s in np.unique(self.sector)))
 
     def parity_gap(self, x: np.ndarray) -> float:
         """Approval-rate difference between the two groups under selection x."""
@@ -65,9 +92,18 @@ class PortfolioProblem:
         return float(rf - rm)
 
     def objective(self, x: np.ndarray) -> float:
-        """The true maximisation objective (profit minus fairness penalty)."""
+        """Profit, minus concentration risk, minus the fairness penalty.
+
+        This is the mean-variance shape of the classic portfolio problem: a linear return
+        term against a quadratic risk term, with risk_gamma playing the role of Markowitz's
+        risk-aversion parameter.
+        """
         x = np.asarray(x, dtype=float)
-        return float(self.ev @ x - self.fairness_lambda * self.parity_gap(x) ** 2)
+        return float(
+            self.ev @ x
+            - self.risk_gamma * self.concentration(x)
+            - self.fairness_lambda * self.parity_gap(x) ** 2
+        )
 
     def is_feasible(self, x: np.ndarray) -> bool:
         return float(np.asarray(x, dtype=float) @ self.units) <= self.budget_units + 1e-9
@@ -78,6 +114,7 @@ def build_problem(
     n: int = 10,
     budget_fraction: float = 0.45,
     fairness_lambda: float = 0.0,
+    risk_gamma: float = 0.0,
     seed: int = 0,
     positive_ev_only: bool = True,
 ) -> PortfolioProblem:
@@ -108,6 +145,8 @@ def build_problem(
         budget_units=budget_units,
         sex=sel["sex"].to_numpy(),
         fairness_lambda=fairness_lambda,
+        sector=sel["purpose"].to_numpy() if "purpose" in sel.columns else None,
+        risk_gamma=risk_gamma,
         meta=sel,
     )
 
@@ -122,6 +161,23 @@ def to_quadratic_program(p: PortfolioProblem) -> QuadraticProgram:
     linear = {f"x{i}": -float(p.ev[i]) for i in range(p.n)}
     quadratic: dict[tuple[str, str], float] = {}
 
+    if p.risk_gamma > 0 and p.sector is not None:
+        # gamma * sum_s (sum_{i in s} w_i x_i)^2 expands to gamma * w_i w_j for every pair
+        # in the same sector. These are the couplings that make this a portfolio problem
+        # rather than a knapsack, and like the fairness term they cost zero extra qubits.
+        w = p.units / max(p.budget_units, 1)
+        for s in np.unique(p.sector):
+            idx = np.flatnonzero(p.sector == s)
+            for a in range(len(idx)):
+                for b in range(a, len(idx)):
+                    i, j = int(idx[a]), int(idx[b])
+                    coeff = p.risk_gamma * w[i] * w[j] * (1.0 if i == j else 2.0)
+                    if i == j:
+                        linear[f"x{i}"] += coeff
+                    elif abs(coeff) > 1e-12:
+                        key = (f"x{i}", f"x{j}")
+                        quadratic[key] = quadratic.get(key, 0.0) + coeff
+
     if p.fairness_lambda > 0:
         # gap(x) = sum_i c_i x_i  with c_i = +1/n_f for female, -1/n_m for male.
         # lambda * gap^2 expands to lambda * sum_ij c_i c_j x_i x_j  (x_i^2 = x_i for binaries).
@@ -134,7 +190,8 @@ def to_quadratic_program(p: PortfolioProblem) -> QuadraticProgram:
                 if i == j:
                     linear[f"x{i}"] += coeff
                 elif abs(coeff) > 1e-12:
-                    quadratic[(f"x{i}", f"x{j}")] = coeff
+                    key = (f"x{i}", f"x{j}")
+                    quadratic[key] = quadratic.get(key, 0.0) + coeff
 
     qp.minimize(linear=linear, quadratic=quadratic)
     qp.linear_constraint(

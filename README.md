@@ -114,6 +114,24 @@ runner and the Windows machine these were generated on, so a strict byte-compari
 fail on every run regardless of correctness. Byte-level reproducibility is verified locally —
 a fresh clone regenerates identical output.
 
+## What we took from comparable work
+
+We surveyed the Qiskit Finance `PortfolioOptimization` tutorial, IBM's Quantum Challenge
+portfolio notebooks, and the strongest QAOA portfolio repositories on GitHub before finalising.
+
+**Adopted — a genuine risk term.** The objective was expected value under a budget: a knapsack,
+not a portfolio. The canonical mean-variance formulation pairs a linear return term with a
+quadratic risk term, so we added a Herfindahl penalty on capital concentrated in one loan
+purpose — using the `purpose` column we had been ignoring. Sector concentration limits are how
+credit books are really managed, and the penalty introduces ZZ couplings between same-sector
+applicants at **zero extra qubits**.
+
+**Tested and rejected — CVaR aggregation.** Barkoutsos et al. (*Quantum* **4**, 256 (2020))
+report CVaR aggregation converging faster and better on every problem they tested, and it is
+what comparable repos use. We measured it over 24 runs per setting: the best α improved the
+approximation ratio by +0.0020 against a within-cell scatter of 0.0219 — roughly 4× smaller
+than its own noise floor. We kept the default. `src/cvar_ablation.py` has the numbers.
+
 ## The two numbers we invented
 
 German Credit has no interest rate and no recovery rate, so the 12% APR and 60% LGD in

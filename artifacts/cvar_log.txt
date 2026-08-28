@@ -1,0 +1,43 @@
+  seed=0 mean (default)   AR=0.9874
+  seed=0 CVaR alpha=0.5   AR=0.9279
+  seed=0 CVaR alpha=0.25  AR=0.9948
+  seed=0 CVaR alpha=0.1   AR=1.0000
+  seed=1 mean (default)   AR=0.9927
+  seed=1 CVaR alpha=0.5   AR=0.9927
+  seed=1 CVaR alpha=0.25  AR=0.9658
+  seed=1 CVaR alpha=0.1   AR=0.9751
+  seed=2 mean (default)   AR=0.9987
+  seed=2 CVaR alpha=0.5   AR=1.0000
+  seed=2 CVaR alpha=0.25  AR=0.9783
+  seed=2 CVaR alpha=0.1   AR=0.9974
+  seed=3 mean (default)   AR=1.0000
+  seed=3 CVaR alpha=0.5   AR=1.0000
+  seed=3 CVaR alpha=0.25  AR=0.9846
+  seed=3 CVaR alpha=0.1   AR=0.9876
+  seed=4 mean (default)   AR=0.9977
+  seed=4 CVaR alpha=0.5   AR=1.0000
+  seed=4 CVaR alpha=0.25  AR=0.9977
+  seed=4 CVaR alpha=0.1   AR=0.9970
+  seed=5 mean (default)   AR=0.9733
+  seed=5 CVaR alpha=0.5   AR=1.0000
+  seed=5 CVaR alpha=0.25  AR=1.0000
+  seed=5 CVaR alpha=0.1   AR=1.0000
+  seed=6 mean (default)   AR=0.9989
+  seed=6 CVaR alpha=0.5   AR=0.9993
+  seed=6 CVaR alpha=0.25  AR=0.9996
+  seed=6 CVaR alpha=0.1   AR=1.0000
+  seed=7 mean (default)   AR=0.9563
+  seed=7 CVaR alpha=0.5   AR=0.9116
+  seed=7 CVaR alpha=0.25  AR=1.0000
+  seed=7 CVaR alpha=0.1   AR=0.8948
+
+=== CVaR ABLATION ===
+          label  ar_mean   ar_min   ar_std  hit_rate  seconds
+ CVaR alpha=0.1 0.981486 0.815625 0.045568  0.666667 3.931366
+CVaR alpha=0.25 0.990102 0.897259 0.025304  0.708333 3.831246
+ CVaR alpha=0.5 0.978935 0.734666 0.063608  0.750000 3.715327
+ mean (default) 0.988121 0.868776 0.030760  0.625000 3.688877
+
+best: CVaR alpha=0.25 at AR 0.9901 vs default 0.9881  (delta +0.0020)
+scatter WITHIN a cell: 0.0219 | spread BETWEEN settings: 0.0053
+-> INCONCLUSIVE: the difference between aggregation settings is smaller than the seed-to-seed scatter. Keep the default and say why.

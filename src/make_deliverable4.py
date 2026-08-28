@@ -147,6 +147,56 @@ conflated them and reported a misleading {sm['mean_overlap_full_pipeline']:.0%} 
         sens_section = ("_Not yet measured — run `python src/sensitivity.py` to populate "
                         "this section._")
 
+    # Optional: only present once src/cvar_ablation.py has been run.
+    cvar_csv = ARTIFACTS / "bench_cvar_summary.csv"
+    cvar_meta_p = ARTIFACTS / "bench_cvar_meta.json"
+    if cvar_csv.exists() and cvar_meta_p.exists():
+        cv = pd.read_csv(cvar_csv)
+        cm = json.loads(cvar_meta_p.read_text())
+        cvar_tbl = md_table(
+            cv[["label", "ar_mean", "ar_min", "ar_std", "hit_rate", "seconds"]].rename(
+                columns={"label": "Aggregation", "ar_mean": "AR mean", "ar_min": "AR worst",
+                         "ar_std": "Std", "hit_rate": "Hit optimum", "seconds": "Sec"}),
+            {"AR mean": "{:.4f}", "AR worst": "{:.4f}", "Std": "{:.4f}",
+             "Hit optimum": "{:.0%}", "Sec": "{:.1f}"},
+        )
+        cvar_real = cm["effect_exceeds_noise_floor"]
+        cvar_section = f"""We surveyed comparable public work before finalising: the Qiskit Finance
+`PortfolioOptimization` tutorial, IBM's Quantum Challenge portfolio notebooks, and the
+strongest QAOA portfolio repositories on GitHub. Two ideas were worth borrowing.
+
+**Adopted: a genuine risk term.** Our objective was expected value under a budget — a knapsack,
+not a portfolio. The canonical mean-variance formulation pairs a linear return term with a
+quadratic risk term, so we added one: a Herfindahl penalty on capital concentrated in a single
+loan purpose, using the `purpose` column we had been ignoring. Sector concentration limits are
+how credit books are actually managed, loans in one sector default together, and the penalty
+introduces real ZZ couplings between same-sector applicants at **zero extra qubits**. This is
+the change that makes the problem a portfolio problem rather than item selection.
+
+**Tested and not adopted: CVaR aggregation.** Barkoutsos et al. (*Quantum* **4**, 256 (2020))
+report that aggregating QAOA samples by the Conditional Value-at-Risk of the best α-fraction,
+instead of by their mean, converges faster and better on every combinatorial problem they
+tested — and it is what the strongest comparable repositories use. It is a one-parameter change
+in Qiskit. We measured it over {cm['runs_per_setting']} runs per setting:
+
+{cvar_tbl}
+
+The best setting, {cm['best_label']}, scores {cm['best_ar']:.4f} against the default's
+{cm['baseline_ar']:.4f} — an improvement of **{cm['improvement']:+.4f}**. But the scatter within
+a single (instance, setting) cell is **{cm['within_cell_std']:.4f}**, against a spread between
+settings of only **{cm['between_setting_std']:.4f}**. {"The effect clears its own noise floor, so we adopted it." if cvar_real else
+f"The effect is roughly {cm['within_cell_std'] / max(cm['between_setting_std'], 1e-9):.0f}× smaller than the noise floor, so we kept the default and say so here."}
+
+That is not a contradiction of the paper. CVaR's reported advantage is largest on noisy hardware
+and on problems where the mean-aggregated landscape is hard to optimise; at 14 qubits on a noise-
+free simulator the default already reaches the optimum {cm['baseline_hit']:.0%} of the time, leaving
+almost nothing for a better aggregation to recover. **We report this because adopting a technique
+on the strength of its citation, without checking it helps on your own problem, is how unverified
+claims get into submissions.**"""
+    else:
+        cvar_section = ("_Not yet measured — run `python src/cvar_ablation.py` to populate "
+                        "this section._")
+
     exact_time = quality[quality.solver.str.startswith("Exact")]["seconds"].mean()
     qaoa = summary[summary.solver.str.startswith("QAOA")].sort_values("solver")
     greedy = summary[summary.solver.str.startswith("Greedy")].iloc[0]
@@ -301,7 +351,13 @@ lever that keeps the instance simulable, and it is a modelling decision, not a t
 
 ---
 
-## C. Fairness as an optimiser constraint, not a footnote
+## B4. What we took from comparable work, and what we measured
+
+{cvar_section}
+
+---
+
+## C. Fairness and diversification as optimiser constraints, not footnotes
 
 The approval-rate parity penalty is a **squared linear term**, so it folds into the objective
 at **zero additional qubits** — and it is what makes the objective genuinely quadratic. A plain

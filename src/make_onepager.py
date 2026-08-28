@@ -128,8 +128,11 @@ def main() -> None:
   Statevector memory is 2<sup>n</sup>&times;16&nbsp;bytes: {max_q} qubits fits comfortably,
   28 = 4.3&nbsp;GB, 30 = 17.2&nbsp;GB (dead on a 16&nbsp;GB laptop). The binding constraint is the
   budget <i>inequality</i>, which forces integer slack and binary expansion. &mdash;
-  The parity penalty is a squared linear term, so it costs <b>zero extra qubits</b> and is what
-  makes this objective genuinely quadratic rather than a linear knapsack in a QUBO costume.
+  Two soft penalties &mdash; sector-concentration risk (the Markowitz term) and approval-rate
+  parity &mdash; are squared linear forms, so both cost <b>zero extra qubits</b> and together they
+  are what make this objective genuinely quadratic rather than a linear knapsack in a QUBO
+  costume. Concentration couples applicants in the SAME sector; parity couples applicants in
+  OPPOSITE groups.
 </div>
 
 <h2>3 &nbsp;The AI model, reported honestly</h2>

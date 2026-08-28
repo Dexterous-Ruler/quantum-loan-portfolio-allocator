@@ -24,6 +24,7 @@ STEPS = [
     ("Benchmark QAOA vs classical", "src/benchmark.py", True),
     ("Noise ablation (hardware-readiness sweep)", "src/noise_ablation.py", True),
     ("Sensitivity to the invented loan economics", "src/sensitivity.py", False),
+    ("CVaR aggregation ablation", "src/cvar_ablation.py", True),
     ("Render figures", "src/figures.py", False),
     ("Render demo GIF", "src/make_demo_gif.py", False),
     ("Write DELIVERABLE_4.md", "src/make_deliverable4.py", False),
