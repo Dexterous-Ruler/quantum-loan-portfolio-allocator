@@ -110,6 +110,51 @@ curve — would have looked far more impressive and would have been unsupported 
 
 ---
 
+## B3. The two numbers we invented, and why only one of them matters
+
+German Credit contains no interest rate and no recovery rate, so the loan economics —
+**12% APR** and **60% loss-given-default** — are assumptions we
+chose, not measurements. Every expected-value coefficient, and therefore the QUBO's ground
+state, rests on them. That is a fair thing for a judge to attack, so we tested it.
+
+**First result: there is only one free parameter, not two.** Expanding the expected value,
+
+    EV_i = A_i · [ (1 − p_i)·APR·d_i/12 − p_i·LGD ]
+         = A_i · APR · [ (1 − p_i)·d_i/12 − p_i·(LGD/APR) ]
+
+scaling APR and LGD together by any k > 0 scales every EV by k, and a knapsack's argmax is
+invariant under positive scaling. So the portfolio depends only on **ρ = LGD/APR**. Our
+baseline is simply one point on the line ρ = 5. We confirmed this
+empirically rather than trusting the algebra: identical portfolios across all 24 rescaling checks.
+
+**Second result: the allocation is robust; the screening is not.**
+
+| rho = LGD/APR | LGD at 12% APR | Same-pool overlap | Full-pipeline overlap | Loans funded |
+| --- | --- | --- | --- | --- |
+| 2.0 | 0.24 | 0.554 | 0.000 | 3.9 |
+| 3.0 | 0.36 | 0.617 | 0.131 | 4.1 |
+| 4.0 | 0.48 | 0.854 | 0.168 | 4.5 |
+| 5.0 | 0.60 | 1.000 | 1.000 | 3.9 |
+| 6.0 | 0.72 | 0.906 | 0.093 | 3.9 |
+| 7.5 | 0.90 | 0.856 | 0.092 | 3.9 |
+| 10.0 | 1.20 | 0.731 | 0.033 | 3.6 |
+
+Holding the candidate pool fixed, a ±20% error in ρ leaves **88%**
+of the portfolio unchanged, and even across a 5× range of ρ the overlap averages
+**75%**. But run the *full* pipeline — where a different ρ also
+changes which applicants clear the positive-EV screen — and overlap collapses to
+**9%**.
+
+That contrast is the useful finding. ρ barely affects *which of the fundable loans to pick*; it
+almost entirely determines *who is fundable at all*. The quantum optimiser's output is stable
+against our pricing assumptions. The screening step in front of it is not, and a real lender
+would need to estimate ρ carefully — that is a credit-policy question, not an optimisation one.
+
+We separated these two effects only after noticing that our first version of this measurement
+conflated them and reported a misleading 9% everywhere.
+
+---
+
 ## C. Fairness as an optimiser constraint, not a footnote
 
 The approval-rate parity penalty is a **squared linear term**, so it folds into the objective

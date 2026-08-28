@@ -11,6 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -88,19 +89,6 @@ st.dataframe(
     width="stretch", hide_index=True,
 )
 
-if not go:
-    st.info("Set a budget on the left and press **Optimise portfolio**.")
-    st.stop()
-
-# ------------------------------------------------------------------ solve
-st.subheader("2. Allocation under the capital budget")
-
-# Classical solvers finish in milliseconds, so show them before starting QAOA -- the jury
-# sees a populated screen immediately instead of an 8-second blank spinner.
-exact = solvers.solve_bruteforce(problem)
-greedy = solvers.solve_greedy(problem)
-
-
 @st.cache_data(show_spinner=False)
 def cached_qaoa(pool_n: int, budget_fraction: float, lam: float, seed: int, reps: int):
     """Cache by the control values, so re-showing a configuration during a demo is instant.
@@ -113,6 +101,31 @@ def cached_qaoa(pool_n: int, budget_fraction: float, lam: float, seed: int, reps
     s = solvers.solve_qaoa(prob, reps=reps)
     return {"x": s.x, "objective": s.objective, "seconds": s.seconds,
             "feasible": s.feasible, "extra": s.extra, "name": s.name}
+
+
+# Pre-warm the DEFAULT configuration once per session, while the jury is still reading the
+# applicant table. The first "Optimise" press is then instant instead of six seconds of
+# silence. Only the defaults are warmed -- warming on every slider move would stall the UI.
+if "warmed" not in st.session_state:
+    with st.spinner("Warming up the quantum solver…"):
+        try:
+            cached_qaoa(10, 0.45, 0.0, 0, 1)
+        except Exception:
+            pass  # a cold first press is a far smaller problem than a broken page
+    st.session_state.warmed = True
+
+if not go:
+    st.info("Set a budget on the left and press **Optimise portfolio**. "
+            "The default configuration is pre-computed, so it returns instantly.")
+    st.stop()
+
+# ------------------------------------------------------------------ solve
+st.subheader("2. Allocation under the capital budget")
+
+# Classical solvers finish in milliseconds, so show them before starting QAOA -- the jury
+# sees a populated screen immediately instead of an 8-second blank spinner.
+exact = solvers.solve_bruteforce(problem)
+greedy = solvers.solve_greedy(problem)
 
 
 with st.spinner(f"Running QAOA on {n_qubits} qubits (simulator)…"):
@@ -152,8 +165,92 @@ with right:
             f"{(base.ev @ b.x) - (problem.ev @ q.x):,.0f} DM."
         )
 
+# ------------------------------------------------------------------ visuals
+QCOL, GREY, ACC = "#4c6ef5", "#c9ccd6", "#e8833a"
+
+
+def _bare(ax):
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    ax.grid(axis="x", alpha=0.25, linewidth=0.6)
+    ax.set_axisbelow(True)
+
+
+@st.cache_data(show_spinner=False)
+def budget_sweep(pool_n: int, lam: float, seed: int):
+    """Optimal profit at every budget level, by exact enumeration.
+
+    Cheap enough to compute live (2^n per budget, n <= 12) and it shows the optimiser
+    working across the whole range rather than at one arbitrary setting.
+    """
+    fracs = np.arange(0.15, 0.95, 0.05)
+    out = []
+    for f in fracs:
+        pr = pf.build_problem(scored, n=pool_n, budget_fraction=float(f),
+                              fairness_lambda=lam, seed=seed)
+        x = solvers.solve_bruteforce(pr).x
+        out.append((pr.budget_units, float(pr.ev @ x), int(x.sum())))
+    # Several fractions can round to the same integer budget; keep the best per budget.
+    best: dict[int, tuple[float, int]] = {}
+    for b, profit, n in out:
+        if b not in best or profit > best[b][0]:
+            best[b] = (profit, n)
+    b = sorted(best)
+    return b, [best[k][0] for k in b], [best[k][1] for k in b]
+
+
+st.subheader("3. What the optimiser actually did")
+vcol1, vcol2 = st.columns(2)
+
+with vcol1:
+    order = np.argsort(problem.ev)
+    labels = [f"#{problem.ids[i]}" for i in order]
+    vals = problem.units[order]
+    funded = q.x[order] == 1
+    fig, ax = plt.subplots(figsize=(5.2, 3.4), dpi=140)
+    ax.barh(range(len(vals)), vals,
+            color=[QCOL if f else GREY for f in funded],
+            edgecolor="none")
+    for i, (u, f, ev) in enumerate(zip(vals, funded, problem.ev[order])):
+        ax.text(u + 0.08, i, f"{ev:,.0f} DM", va="center", fontsize=7,
+                color="#1a1a1a" if f else "#8a8a94")
+    ax.set_yticks(range(len(vals)))
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xlabel("Capital units requested")
+    ax.set_xlim(0, max(vals) * 1.55)
+    ax.set_title(f"Funded (blue) vs declined (grey)\n"
+                 f"{int(problem.units @ q.x)} of {problem.budget_units} units deployed",
+                 fontsize=9, loc="left")
+    _bare(ax)
+    fig.tight_layout()
+    st.pyplot(fig, width="stretch")
+    plt.close(fig)
+
+with vcol2:
+    bs, profits, counts = budget_sweep(pool_n, problem.fairness_lambda, int(seed))
+    fig, ax = plt.subplots(figsize=(5.2, 3.4), dpi=140)
+    ax.plot(bs, profits, "o-", color=QCOL, linewidth=2, markersize=4, zorder=3)
+    here = problem.ev @ q.x
+    ax.scatter([problem.budget_units], [here], s=140, color=ACC, zorder=5,
+               edgecolor="white", linewidth=1.5, label="Your current budget")
+    ax.set_xlabel("Capital budget (units)")
+    ax.set_ylabel("Expected profit (DM)")
+    ax.set_title("Profit against every possible budget\n"
+                 "Drag the budget slider and watch the dot move",
+                 fontsize=9, loc="left")
+    ax.legend(fontsize=8, frameon=False, loc="lower right")
+    _bare(ax)
+    ax.grid(axis="y", alpha=0.25, linewidth=0.6)
+    fig.tight_layout()
+    st.pyplot(fig, width="stretch")
+    plt.close(fig)
+    st.caption(
+        "Diminishing returns are visible: past a point, extra capital buys progressively "
+        "less profit because the remaining applicants carry worse risk-adjusted value."
+    )
+
 # ------------------------------------------------------------------ comparison
-st.subheader("3. Quantum vs classical — same QUBO, same instance")
+st.subheader("4. Quantum vs classical — same QUBO, same instance")
 cmp = pd.DataFrame([
     {"solver": s.name, "objective": s.objective, "approx ratio": s.objective / exact.objective,
      "wall clock (s)": s.seconds, "feasible": s.feasible}
@@ -193,7 +290,7 @@ st.download_button(
 )
 
 # ------------------------------------------------------------------ show your work
-st.subheader("4. What the quantum module is actually doing")
+st.subheader("5. What the quantum module is actually doing")
 tabs = st.tabs(["The circuit", "Cost Hamiltonian", "Alternative portfolios"])
 with tabs[0]:
     stats = solvers.ansatz_stats(problem, reps=reps)

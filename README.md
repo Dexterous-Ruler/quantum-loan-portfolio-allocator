@@ -1,5 +1,14 @@
 # Quantum-Assisted Loan-Portfolio Allocator
 
+[![tests](https://github.com/Dexterous-Ruler/quantum-loan-portfolio-allocator/actions/workflows/ci.yml/badge.svg)](https://github.com/Dexterous-Ruler/quantum-loan-portfolio-allocator/actions/workflows/ci.yml)
+
+**Team ASTITWA — Tanishq Aryan**
+
+![Demo](artifacts/demo.gif)
+
+*Capital budget sweeps up and down; the funded portfolio (blue) re-optimises and the marker
+tracks its position on the profit curve.*
+
 **Hackathon theme #25 — Portfolio / resource allocation optimizer.**
 *AI predicts returns from history → QAOA picks the best subset under a budget constraint →
 live demo: enter a budget, get the optimized selection.*
@@ -104,6 +113,16 @@ an error: `DELIVERABLE_4.html` embeds matplotlib PNGs whose bytes differ between
 runner and the Windows machine these were generated on, so a strict byte-comparison would
 fail on every run regardless of correctness. Byte-level reproducibility is verified locally —
 a fresh clone regenerates identical output.
+
+## The two numbers we invented
+
+German Credit has no interest rate and no recovery rate, so the 12% APR and 60% LGD in
+[`src/data.py`](src/data.py) are assumptions, not data. `src/sensitivity.py` tests what that
+costs. Two results: the portfolio depends **only on the ratio ρ = LGD/APR**, not on either
+number individually (a knapsack's argmax is invariant under positive scaling of the objective —
+verified empirically over 24 rescaling checks); and holding the pool fixed, a ±20% error in ρ
+leaves 88% of the portfolio unchanged. The *screening* step in front of the optimiser is far
+more sensitive than the allocation itself.
 
 ## Hardware readiness
 

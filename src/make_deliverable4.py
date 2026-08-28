@@ -94,6 +94,59 @@ curve — would have looked far more impressive and would have been unsupported 
         noise_section = ("_Not yet measured — run `python src/noise_ablation.py` to populate "
                          "this section._")
 
+    # Optional: only present once src/sensitivity.py has been run.
+    sens_csv = ARTIFACTS / "bench_sensitivity.csv"
+    sens_meta_p = ARTIFACTS / "bench_sensitivity_meta.json"
+    if sens_csv.exists() and sens_meta_p.exists():
+        sd = pd.read_csv(sens_csv)
+        sm = json.loads(sens_meta_p.read_text())
+        sens_tbl = md_table(
+            sd[["rho", "lgd_at_12pct_apr", "jaccard_mean", "jaccard_full_pipeline", "n_funded"]].rename(
+                columns={"rho": "rho = LGD/APR", "lgd_at_12pct_apr": "LGD at 12% APR",
+                         "jaccard_mean": "Same-pool overlap",
+                         "jaccard_full_pipeline": "Full-pipeline overlap",
+                         "n_funded": "Loans funded"}),
+            {"rho = LGD/APR": "{:.1f}", "LGD at 12% APR": "{:.2f}",
+             "Same-pool overlap": "{:.3f}", "Full-pipeline overlap": "{:.3f}",
+             "Loans funded": "{:.1f}"},
+        )
+        sens_section = f"""German Credit contains no interest rate and no recovery rate, so the loan economics —
+**{sm['base_apr']:.0%} APR** and **{sm['base_lgd']:.0%} loss-given-default** — are assumptions we
+chose, not measurements. Every expected-value coefficient, and therefore the QUBO's ground
+state, rests on them. That is a fair thing for a judge to attack, so we tested it.
+
+**First result: there is only one free parameter, not two.** Expanding the expected value,
+
+    EV_i = A_i · [ (1 − p_i)·APR·d_i/12 − p_i·LGD ]
+         = A_i · APR · [ (1 − p_i)·d_i/12 − p_i·(LGD/APR) ]
+
+scaling APR and LGD together by any k > 0 scales every EV by k, and a knapsack's argmax is
+invariant under positive scaling. So the portfolio depends only on **ρ = LGD/APR**. Our
+baseline is simply one point on the line ρ = {sm['base_rho']:.0f}. We confirmed this
+empirically rather than trusting the algebra: {"identical portfolios across all 24 rescaling checks"
+if sm['scale_invariance_confirmed'] else "the check FAILED, see the CSV"}.
+
+**Second result: the allocation is robust; the screening is not.**
+
+{sens_tbl}
+
+Holding the candidate pool fixed, a ±20% error in ρ leaves **{sm['mean_overlap_rho_4_to_6']:.0%}**
+of the portfolio unchanged, and even across a 5× range of ρ the overlap averages
+**{sm['mean_overlap_off_baseline']:.0%}**. But run the *full* pipeline — where a different ρ also
+changes which applicants clear the positive-EV screen — and overlap collapses to
+**{sm['mean_overlap_full_pipeline']:.0%}**.
+
+That contrast is the useful finding. ρ barely affects *which of the fundable loans to pick*; it
+almost entirely determines *who is fundable at all*. The quantum optimiser's output is stable
+against our pricing assumptions. The screening step in front of it is not, and a real lender
+would need to estimate ρ carefully — that is a credit-policy question, not an optimisation one.
+
+We separated these two effects only after noticing that our first version of this measurement
+conflated them and reported a misleading {sm['mean_overlap_full_pipeline']:.0%} everywhere."""
+    else:
+        sens_section = ("_Not yet measured — run `python src/sensitivity.py` to populate "
+                        "this section._")
+
     exact_time = quality[quality.solver.str.startswith("Exact")]["seconds"].mean()
     qaoa = summary[summary.solver.str.startswith("QAOA")].sort_values("solver")
     greedy = summary[summary.solver.str.startswith("Greedy")].iloc[0]
@@ -239,6 +292,12 @@ lever that keeps the instance simulable, and it is a modelling decision, not a t
 ## B2. Hardware readiness — and a metric that lied to us
 
 {noise_section}
+
+---
+
+## B3. The two numbers we invented, and why only one of them matters
+
+{sens_section}
 
 ---
 

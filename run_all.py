@@ -23,7 +23,9 @@ STEPS = [
     ("Train AI model (Deliverable 1)", "src/ai_model.py", False),
     ("Benchmark QAOA vs classical", "src/benchmark.py", True),
     ("Noise ablation (hardware-readiness sweep)", "src/noise_ablation.py", True),
+    ("Sensitivity to the invented loan economics", "src/sensitivity.py", False),
     ("Render figures", "src/figures.py", False),
+    ("Render demo GIF", "src/make_demo_gif.py", False),
     ("Write DELIVERABLE_4.md", "src/make_deliverable4.py", False),
     ("Write DELIVERABLE_4.html (the one-pager)", "src/make_onepager.py", False),
 ]

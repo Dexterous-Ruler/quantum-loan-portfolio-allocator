@@ -156,6 +156,23 @@ def test_hamiltonian_is_well_formed(problem):
     assert all(len(t["pauli"]) == nq for t in terms)
 
 
+def test_portfolio_depends_only_on_lgd_over_apr(scored):
+    """Scaling APR and LGD together must not change the chosen portfolio.
+
+    EV_i = A_i * APR * [(1-p_i)*d_i/12 - p_i*(LGD/APR)], so scaling both by k scales every
+    EV by k, and a knapsack's argmax is invariant under positive scaling. This pins the
+    property that lets us report one free parameter (rho = LGD/APR) instead of two invented
+    numbers -- see DELIVERABLE_4.md section B3.
+    """
+    import sensitivity as sens
+
+    for seed in range(3):
+        base = sens.selected_ids(scored, sens.BASE_APR, sens.BASE_LGD, seed)
+        for k in (0.5, 2.0, 3.0):
+            scaled = sens.selected_ids(scored, sens.BASE_APR * k, sens.BASE_LGD * k, seed)
+            assert scaled == base, f"scaling by {k} changed the portfolio on seed {seed}"
+
+
 # ---------------------------------------------------------------- quantum (slow)
 
 
