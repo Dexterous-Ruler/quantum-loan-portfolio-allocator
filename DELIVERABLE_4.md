@@ -78,34 +78,40 @@ lever that keeps the instance simulable, and it is a modelling decision, not a t
 
 We never touch hardware — the brief scopes us to a simulator. But "would this run on a real
 device?" is the obvious follow-up, so we swept a depolarizing two-qubit gate error at
-8 applicants (1 QAOA layer, 3 instances per level).
+8 accounts (1 QAOA layer, 12 instances per level).
 
 | 2-qubit gate error | AR, best of 2048 shots | AR, sampled distribution | P(feasible) | Wall clock (s) |
 | --- | --- | --- | --- | --- |
-| 0.000 | 1.0000 | 0.5228 | 0.511 | 3.9 |
-| 0.001 | 1.0000 | 0.4521 | 0.556 | 57.1 |
-| 0.005 | 1.0000 | 0.4301 | 0.639 | 58.9 |
-| 0.010 | 0.9575 | 0.4892 | 0.581 | 66.8 |
-| 0.020 | 1.0000 | 0.5108 | 0.580 | 63.0 |
+| 0.000 | 0.9351 | 0.3172 | 0.616 | 3.1 |
+| 0.001 | 1.0000 | 0.3200 | 0.629 | 65.4 |
+| 0.005 | 0.9601 | 0.3683 | 0.605 | 68.7 |
+| 0.010 | 0.9762 | 0.3656 | 0.591 | 64.8 |
+| 0.020 | 0.9188 | 0.3683 | 0.547 | 62.9 |
 
-**What this does establish.** Best-of-2048-shots readout returns the *exact optimum*
-at every error level, including 2% depolarizing error applied across 182 two-qubit gates —
-a regime where essentially no coherent signal should survive. That is not robustness of the
-algorithm; it is an artifact of the statistic. At 12 qubits a near-uniform distribution still
-lands on the optimum within 2048 draws by chance. **A QAOA noise study scored on
-best-of-N shots will report false robustness**, and `MinimumEigenOptimizer` reports exactly
-that statistic by default. This is the single most useful thing we learned building the
-ablation, and we only found it because our first version of this table showed noise making
-QAOA *better* — which is physically impossible, so the metric had to be wrong.
+**This sweep is inconclusive, and the interesting part is why.** Scatter *within* a single
+error level across seeds is **0.1365**; the spread *between*
+error levels is **0.0268**. The putative trend is about
+5x smaller than its own noise floor, so there is no degradation curve here we are
+entitled to draw. Resolving it would take roughly **104
+seeds per level**, about **8 hours** of noisy simulation.
 
-**What this does NOT establish.** We cannot give you a degradation curve. Holding the noise
-sweep to the same standard as the depth ranking in section A: the scatter *within* one error
-level across seeds is **0.0545**, while the spread *between*
-error levels is only **0.0392** — the putative trend is roughly
-1× smaller
-than its own noise floor. Resolving it honestly would need about **8 seeds per level**, roughly **1 hours** of noisy simulation. We did not run that, so we report the sweep as inconclusive rather than drawing a line through five noisy points.
+**The power calculation was itself under-powered.** We first ran this at 3 seeds per level.
+That pilot was also inconclusive, but it estimated only ~8 seeds would settle it — so we ran
+12. With 12 seeds the measured within-level scatter came out roughly 2.5x larger than the
+pilot had estimated, and the requirement moved from ~8 seeds to ~104.
+The pilot had not merely failed to resolve the trend; it had *underestimated its own error
+bars*. This is the same lesson as section A applied one level up: a small sample is unreliable
+about effects, and equally unreliable about how much data you would need to measure them.
 
-We are stating this because the alternative — printing the five means as a tidy descending
+**A claim we are retracting.** On the 3-seed data, best-of-2048-shots readout returned
+the exact optimum at every error level including 2%, and we wrote that up as evidence that the
+default statistic is blind to noise — a good story, and `MinimumEigenOptimizer` does report
+that statistic by default. At 12 seeds it does not hold: best-of-N ranges from
+0.9188 to 1.0000 across the sweep. Both metrics move, and both move by less than
+the within-level scatter, so neither supports a conclusion. We are removing the claim rather
+than keeping it because it read well.
+
+We report all of this because the alternative — five means printed as a tidy descending
 curve — would have looked far more impressive and would have been unsupported by our own data.
 
 ---
@@ -173,23 +179,23 @@ the change that makes the problem a portfolio problem rather than item selection
 report that aggregating QAOA samples by the Conditional Value-at-Risk of the best α-fraction,
 instead of by their mean, converges faster and better on every combinatorial problem they
 tested — and it is what the strongest comparable repositories use. It is a one-parameter change
-in Qiskit. We measured it over 24 runs per setting:
+in Qiskit. We measured it over 64 runs per setting:
 
 | Aggregation | AR mean | AR worst | Std | Hit optimum | Sec |
 | --- | --- | --- | --- | --- | --- |
-| CVaR alpha=0.1 | 0.9783 | 0.9207 | 0.0304 | 54% | 5.5 |
-| CVaR alpha=0.25 | 0.9939 | 0.9234 | 0.0177 | 75% | 5.4 |
-| CVaR alpha=0.5 | 0.9754 | 0.9115 | 0.0316 | 54% | 5.2 |
-| mean (default) | 0.9780 | 0.9076 | 0.0314 | 50% | 5.2 |
+| CVaR alpha=0.1 | 0.9894 | 0.8522 | 0.0260 | 78% | 4.5 |
+| CVaR alpha=0.25 | 0.9831 | 0.9140 | 0.0274 | 70% | 4.4 |
+| CVaR alpha=0.5 | 0.9788 | 0.9001 | 0.0327 | 58% | 4.3 |
+| mean (default) | 0.9756 | 0.8132 | 0.0384 | 58% | 4.4 |
 
-The best setting, CVaR alpha=0.25, scores 0.9939 against the default's
-0.9780 — an improvement of **+0.0159**. But the scatter within
-a single (instance, setting) cell is **0.0161**, against a spread between
-settings of only **0.0084**. The effect is roughly 2× smaller than the noise floor, so we kept the default and say so here.
+The best setting, CVaR alpha=0.1, scores 0.9894 against the default's
+0.9756 — an improvement of **+0.0138**. But the scatter within
+a single (instance, setting) cell is **0.0258**, against a spread between
+settings of only **0.0060**. The effect is roughly 4× smaller than the noise floor, so we kept the default and say so here.
 
 That is not a contradiction of the paper. CVaR's reported advantage is largest on noisy hardware
 and on problems where the mean-aggregated landscape is hard to optimise; at 14 qubits on a noise-
-free simulator the default already reaches the optimum 50% of the time, leaving
+free simulator the default already reaches the optimum 58% of the time, leaving
 almost nothing for a better aggregation to recover. **We report this because adopting a technique
 on the strength of its citation, without checking it helps on your own problem, is how unverified
 claims get into submissions.**

@@ -82,13 +82,19 @@ depths. At this scale the depth ranking is optimiser-seed luck. Anyone showing y
 single-seed table with a "best depth" is reporting noise — we nearly did.
 
 **"Would this work on real hardware?"**
-We measured it, and the useful answer is about measurement rather than hardware. The default
-readout — best of 2048 shots — returns the exact optimum even at 2% depolarizing error across
-182 two-qubit gates, where no coherent signal should survive. At 12 qubits a near-uniform
-distribution still hits the optimum by chance within 2048 draws. So `MinimumEigenOptimizer`'s
-default statistic reports false robustness. As for the actual degradation curve: our
-within-level scatter is 7× the between-level spread, so we report the sweep as inconclusive.
-Resolving it would take ~220 seeds per level, about 19 hours of noisy simulation.
+We swept a depolarizing two-qubit gate error and the honest answer is: our sweep cannot tell
+you. Scatter within one error level across seeds is 0.1365; the spread between error levels is
+0.0268. The trend is several times smaller than its own noise floor, so we do not draw a
+degradation curve. Resolving it would take ~104 seeds per level, about 8 hours of noisy
+simulation.
+
+The interesting part is what that cost us. We first ran 3 seeds, which estimated only ~8 seeds
+would settle it. At 12 seeds the measured scatter came out ~2.5x larger than the pilot thought,
+and the requirement jumped to ~104. The pilot had underestimated its own error bars -- a small
+sample is unreliable about effects AND about how much data you would need. We also retracted a
+claim from that pilot: at 3 seeds best-of-N readout returned the exact optimum at every error
+level, which looked like clean evidence that the default statistic is noise-blind. At 12 seeds
+it ranges 0.9188 to 1.0000 and the claim does not hold. We removed it.
 
 **"Why should I trust this dataset?"**
 It is 30,000 real Taiwanese credit-card accounts from 2005 with a real 22.1% default rate. We

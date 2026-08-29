@@ -1,14 +1,14 @@
 {
-  "baseline_ar": 0.9780301851879516,
-  "baseline_hit": 0.5,
-  "best_label": "CVaR alpha=0.25",
-  "best_ar": 0.9939281579964153,
-  "best_hit": 0.75,
-  "improvement": 0.015897972808463723,
-  "within_cell_std": 0.016090702018080043,
-  "between_setting_std": 0.008436411606741493,
+  "baseline_ar": 0.975614126383316,
+  "baseline_hit": 0.578125,
+  "best_label": "CVaR alpha=0.1",
+  "best_ar": 0.9894177372574112,
+  "best_hit": 0.78125,
+  "improvement": 0.013803610874095207,
+  "within_cell_std": 0.025754362688510765,
+  "between_setting_std": 0.00597661632136291,
   "effect_exceeds_noise_floor": false,
   "seeds": 8,
-  "repeats": 3,
-  "runs_per_setting": 24
+  "repeats": 8,
+  "runs_per_setting": 64
 }

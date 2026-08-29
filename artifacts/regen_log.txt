@@ -1,0 +1,63 @@
+[1/9] Train AI model (Deliverable 1) …
+{
+  "n_train": 21000,
+  "n_test": 9000,
+  "gbm_auc": 0.7798272781088876,
+  "gbm_brier": 0.13536237913037177,
+  "logreg_auc": 0.7148082335698258,
+  "logreg_brier": 0.14616939724079692,
+  "base_rate": 0.2212
+}
+
+scored test-set rows: 9000
+       principal  p_default  expected_value
+count    9000.00    9000.00         9000.00
+mean    50390.20       0.22         1033.27
+std     71462.82       0.20        14122.84
+min         0.00       0.03      -166180.16
+25%      3663.75       0.09            0.00
+50%     22509.00       0.14          499.49
+75%     66462.50       0.25         4304.80
+max    730000.00       0.82        76740.02
+    done in 18.2s
+[2/9] Benchmark QAOA vs classical — SKIPPED (--fast)
+[3/9] Noise ablation (hardware-readiness sweep) — SKIPPED (--fast)
+[4/9] Sensitivity to the invented loan economics …
+scale invariance (apr,lgd -> k*apr,k*lgd): min overlap 1.000 over 24 checks -> CONFIRMED
+
+  rho=  1.5  same-pool overlap=0.581   full-pipeline overlap=0.000   funded=2.9
+  rho=  2.0  same-pool overlap=0.775   full-pipeline overlap=0.000   funded=3.1
+  rho=  2.5  same-pool overlap=0.850   full-pipeline overlap=0.000   funded=3.1
+  rho=  3.3  same-pool overlap=1.000   full-pipeline overlap=1.000   funded=3.1
+  rho=  4.0  same-pool overlap=1.000   full-pipeline overlap=0.000   funded=3.2
+  rho=  5.0  same-pool overlap=0.950   full-pipeline overlap=0.000   funded=3.8
+  rho=  7.0  same-pool overlap=0.750   full-pipeline overlap=0.000   funded=3.9
+
+=== SENSITIVITY TO THE INVENTED ECONOMICS ===
+Only rho = lgd/apr matters; scale invariance confirmed over 24 checks.
+same-pool overlap, rho in [4,6]:      0.975
+same-pool overlap, full sweep:        0.818
+full-pipeline overlap (pool re-screened): 0.000
+worst case: 0.581 at rho=1.5
+-> stable against plausible mis-pricing near the baseline.
+    done in 10.3s
+[5/9] CVaR aggregation ablation — SKIPPED (--fast)
+[6/9] Render figures …
+wrote artifacts\figures\quality.png
+wrote artifacts\figures\scaling.png
+wrote artifacts\figures\fairness.png
+wrote artifacts\figures\calibration.png
+wrote artifacts\figures\noise.png
+    done in 9.2s
+[7/9] Render demo GIF …
+wrote artifacts\demo.gif (218 KB, 28 frames)
+    done in 10.6s
+[8/9] Write DELIVERABLE_4.md …
+wrote DELIVERABLE_4.md
+    done in 2.5s
+[9/9] Write DELIVERABLE_4.html (the one-pager) …
+wrote DELIVERABLE_4.html (242 KB)
+    done in 2.4s
+
+All deliverables rebuilt. Launch the demo with:
+    .venv/Scripts/streamlit run app.py

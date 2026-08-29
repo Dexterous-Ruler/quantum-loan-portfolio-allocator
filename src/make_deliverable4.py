@@ -64,31 +64,38 @@ def main() -> None:
              "Wall clock (s)": "{:.1f}"},
         )
         resolved = nm["noise_trend_exceeds_noise_floor"]
+        best_lo, best_hi = float(ns["ar_best_mean"].min()), float(ns["ar_best_mean"].max())
+        ratio = nm["ar_dist_within_level_std"] / max(nm["ar_dist_between_level_std"], 1e-9)
         noise_section = f"""We never touch hardware — the brief scopes us to a simulator. But "would this run on a real
 device?" is the obvious follow-up, so we swept a depolarizing two-qubit gate error at
-{nm['pool_n']} applicants ({nm['reps']} QAOA layer, {nm['seeds']} instances per level).
+{nm['pool_n']} accounts ({nm['reps']} QAOA layer, {nm['seeds']} instances per level).
 
 {noise_tbl}
 
-**What this does establish.** Best-of-{nm['shots']}-shots readout returns the *exact optimum*
-at every error level, including 2% depolarizing error applied across 182 two-qubit gates —
-a regime where essentially no coherent signal should survive. That is not robustness of the
-algorithm; it is an artifact of the statistic. At 12 qubits a near-uniform distribution still
-lands on the optimum within {nm['shots']} draws by chance. **A QAOA noise study scored on
-best-of-N shots will report false robustness**, and `MinimumEigenOptimizer` reports exactly
-that statistic by default. This is the single most useful thing we learned building the
-ablation, and we only found it because our first version of this table showed noise making
-QAOA *better* — which is physically impossible, so the metric had to be wrong.
+**This sweep is inconclusive, and the interesting part is why.** Scatter *within* a single
+error level across seeds is **{nm['ar_dist_within_level_std']:.4f}**; the spread *between*
+error levels is **{nm['ar_dist_between_level_std']:.4f}**. The putative trend is about
+{ratio:.0f}x smaller than its own noise floor, so there is no degradation curve here we are
+entitled to draw. Resolving it would take roughly **{nm['seeds_per_level_needed_to_resolve']}
+seeds per level**, about **{nm['hours_needed_to_resolve']:.0f} hours** of noisy simulation.
 
-**What this does NOT establish.** We cannot give you a degradation curve. Holding the noise
-sweep to the same standard as the depth ranking in section A: the scatter *within* one error
-level across seeds is **{nm['ar_dist_within_level_std']:.4f}**, while the spread *between*
-error levels is only **{nm['ar_dist_between_level_std']:.4f}** — the putative trend is roughly
-{nm['ar_dist_within_level_std'] / max(nm['ar_dist_between_level_std'], 1e-9):.0f}× smaller
-than its own noise floor. {"It nonetheless clears that floor." if resolved else
-f"Resolving it honestly would need about **{nm['seeds_per_level_needed_to_resolve']} seeds per level**, roughly **{nm['hours_needed_to_resolve']:.0f} hours** of noisy simulation. We did not run that, so we report the sweep as inconclusive rather than drawing a line through five noisy points."}
+**The power calculation was itself under-powered.** We first ran this at 3 seeds per level.
+That pilot was also inconclusive, but it estimated only ~8 seeds would settle it — so we ran
+12. With 12 seeds the measured within-level scatter came out roughly 2.5x larger than the
+pilot had estimated, and the requirement moved from ~8 seeds to ~{nm['seeds_per_level_needed_to_resolve']}.
+The pilot had not merely failed to resolve the trend; it had *underestimated its own error
+bars*. This is the same lesson as section A applied one level up: a small sample is unreliable
+about effects, and equally unreliable about how much data you would need to measure them.
 
-We are stating this because the alternative — printing the five means as a tidy descending
+**A claim we are retracting.** On the 3-seed data, best-of-{nm['shots']}-shots readout returned
+the exact optimum at every error level including 2%, and we wrote that up as evidence that the
+default statistic is blind to noise — a good story, and `MinimumEigenOptimizer` does report
+that statistic by default. At {nm['seeds']} seeds it does not hold: best-of-N ranges from
+{best_lo:.4f} to {best_hi:.4f} across the sweep. Both metrics move, and both move by less than
+the within-level scatter, so neither supports a conclusion. We are removing the claim rather
+than keeping it because it read well.
+
+We report all of this because the alternative — five means printed as a tidy descending
 curve — would have looked far more impressive and would have been unsupported by our own data."""
     else:
         noise_section = ("_Not yet measured — run `python src/noise_ablation.py` to populate "
