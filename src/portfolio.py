@@ -41,7 +41,7 @@ import pandas as pd
 from qiskit_optimization import QuadraticProgram
 from qiskit_optimization.converters import QuadraticProgramToQubo
 
-UNIT_SIZE = 1000.0  # DM of principal per capital "unit"
+UNIT_SIZE = 20000.0  # NT$ of exposure per capital "unit"
 MAX_UNITS = 6
 
 
@@ -50,12 +50,12 @@ class PortfolioProblem:
     """A concrete, sized instance of the allocation problem."""
 
     ids: list[int]
-    ev: np.ndarray                # expected value per loan (DM)
+    ev: np.ndarray                # expected value per account (NT$)
     units: np.ndarray             # discretised principal per loan
     budget_units: int
-    sex: np.ndarray               # protected attribute, for the fairness term
+    group: np.ndarray             # protected attribute (sex), for the fairness term
     fairness_lambda: float = 0.0
-    sector: np.ndarray | None = None   # loan purpose, for the concentration term
+    sector: np.ndarray | None = None   # customer segment, for the concentration term
     risk_gamma: float = 0.0
     meta: pd.DataFrame | None = field(default=None, repr=False)
 
@@ -64,7 +64,7 @@ class PortfolioProblem:
         return len(self.ids)
 
     def concentration(self, x: np.ndarray) -> float:
-        """Herfindahl concentration of capital across loan purposes.
+        """Herfindahl concentration of capital across customer segments.
 
         Without this the objective is a pure knapsack -- maximise expected value, ignore
         how the exposure is distributed. That is not portfolio optimisation, it is item
@@ -82,10 +82,25 @@ class PortfolioProblem:
         return float(sum((w[self.sector == s] @ x[self.sector == s]) ** 2
                          for s in np.unique(self.sector)))
 
+    @property
+    def group_mask(self) -> np.ndarray:
+        """Boolean mask selecting the first protected group, whatever it is called.
+
+        SINGLE SOURCE OF TRUTH. `parity_gap` and `to_quadratic_program` must partition the
+        pool identically or the Hamiltonian encodes a different problem than the objective
+        it claims to represent. They previously each hardcoded a group label, and when the
+        protected attribute changed one of them was missed: the QUBO then treated every
+        applicant as one group, making the fairness term a constant. Nothing raised -- the
+        brute-force-vs-diagonalisation test is what caught it. Deriving the mask once, from
+        sorted labels, removes the possibility.
+        """
+        labels = np.unique(self.group)
+        return self.group == labels[0]
+
     def parity_gap(self, x: np.ndarray) -> float:
         """Approval-rate difference between the two groups under selection x."""
         x = np.asarray(x, dtype=float)
-        f = self.sex == "female"
+        f = self.group_mask
         m = ~f
         rf = x[f].sum() / max(f.sum(), 1)
         rm = x[m].sum() / max(m.sum(), 1)
@@ -143,9 +158,9 @@ def build_problem(
         ev=sel["expected_value"].to_numpy(dtype=float),
         units=units,
         budget_units=budget_units,
-        sex=sel["sex"].to_numpy(),
+        group=sel["group"].to_numpy(),
         fairness_lambda=fairness_lambda,
-        sector=sel["purpose"].to_numpy() if "purpose" in sel.columns else None,
+        sector=sel["sector"].to_numpy() if "sector" in sel.columns else None,
         risk_gamma=risk_gamma,
         meta=sel,
     )
@@ -181,7 +196,7 @@ def to_quadratic_program(p: PortfolioProblem) -> QuadraticProgram:
     if p.fairness_lambda > 0:
         # gap(x) = sum_i c_i x_i  with c_i = +1/n_f for female, -1/n_m for male.
         # lambda * gap^2 expands to lambda * sum_ij c_i c_j x_i x_j  (x_i^2 = x_i for binaries).
-        f = p.sex == "female"
+        f = p.group_mask
         n_f, n_m = max(f.sum(), 1), max((~f).sum(), 1)
         c = np.where(f, 1.0 / n_f, -1.0 / n_m)
         for i in range(p.n):

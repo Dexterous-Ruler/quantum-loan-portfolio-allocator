@@ -1,5 +1,5 @@
 {
-  "within_cell_ar_std": 0.023558387299474026,
-  "between_depth_ar_std": 0.016006181090199613,
+  "within_cell_ar_std": 0.021136868496851136,
+  "between_depth_ar_std": 0.0036079852360729513,
   "depth_ranking_is_noise": true
 }

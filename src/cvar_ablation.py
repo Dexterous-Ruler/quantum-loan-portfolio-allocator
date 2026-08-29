@@ -10,7 +10,7 @@ alpha -- which is the same size as the seed-to-seed scatter we already measured 
 depth. So this script applies the same standard used everywhere else in the repo: run enough
 seeds to establish a noise floor, and only claim an effect that clears it.
 
-    python src/cvar_ablation.py       # ~8 minutes
+    python src/cvar_ablation.py       # ~25 minutes
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
 POOL_N = 10
 REPS = 1
 SEEDS = list(range(8))
-QAOA_REPEATS = 3
+QAOA_REPEATS = 8
 # None = plain mean aggregation (the qiskit default). Lower alpha = more aggressive CVaR.
 ALPHAS = [None, 0.5, 0.25, 0.1]
 

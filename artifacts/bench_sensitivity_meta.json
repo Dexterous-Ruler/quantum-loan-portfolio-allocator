@@ -1,13 +1,13 @@
 {
-  "base_apr": 0.12,
+  "base_apr": 0.18,
   "base_lgd": 0.6,
-  "base_rho": 5.0,
+  "base_rho": 3.3333333333333335,
   "scale_invariance_confirmed": true,
   "seeds": 8,
-  "mean_overlap_off_baseline": 0.7531249999999999,
-  "mean_overlap_rho_4_to_6": 0.8802083333333333,
-  "mean_overlap_full_pipeline": 0.08625992063492065,
-  "worst_overlap": 0.5541666666666667,
-  "worst_at_rho": 2.0,
+  "mean_overlap_off_baseline": 0.8177083333333334,
+  "mean_overlap_rho_4_to_6": 0.975,
+  "mean_overlap_full_pipeline": 0.0,
+  "worst_overlap": 0.58125,
+  "worst_at_rho": 1.5,
   "portfolio_is_robust_near_baseline": true
 }

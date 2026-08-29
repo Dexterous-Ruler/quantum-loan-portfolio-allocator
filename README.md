@@ -13,8 +13,8 @@ tracks its position on the profit curve.*
 *AI predicts returns from history → QAOA picks the best subset under a budget constraint →
 live demo: enter a budget, get the optimized selection.*
 
-An ML model scores loan applications for default risk; those calibrated probabilities become
-the coefficients of a QUBO; QAOA allocates a fixed capital budget across the loan book.
+An ML model scores real credit-card accounts for default risk; those calibrated probabilities
+become the coefficients of a QUBO; QAOA allocates a fixed capital budget across the book.
 
 ## The architecture point
 
@@ -25,13 +25,13 @@ together.
 Here they run **in series**:
 
 ```
-German Credit data
+30,000 Taiwanese credit-card accounts
       ↓
-calibrated GBM  →  P(default) per applicant
+calibrated GBM  →  P(default) per customer
       ↓
-EV = P(repay)·interest − P(default)·LGD·principal      ← ML output becomes objective coefficients
+EV = P(repay)·interest − P(default)·LGD·exposure   ← ML output becomes objective coefficients
       ↓
-QUBO: max Σ EV·x − λ·parity_gap(x)²   s.t.  Σ units·x ≤ budget
+QUBO: max Σ EV·x − γ·concentration(x) − λ·parity_gap(x)²   s.t.  Σ units·x ≤ budget
       ↓
 Ising Hamiltonian  →  QAOA ansatz  →  measured portfolio
 ```
@@ -77,7 +77,7 @@ py -3.14 -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
-Rebuild every deliverable end to end (~12 min, dominated by the benchmark):
+Rebuild every deliverable end to end (~40 min, dominated by the benchmark and ablations):
 
 ```bash
 .venv/Scripts/python.exe run_all.py
@@ -101,7 +101,7 @@ Launch the demo:
 .venv/Scripts/python.exe -m pytest tests -q
 ```
 
-19 tests. The fast 16 run in ~7 s; three more exercise the QAOA solver and are marked `slow`
+22 tests. The fast 19 run in ~20 s; three more exercise the QAOA solver and are marked `slow`
 (`pytest tests -m slow`). The load-bearing one is
 `test_bruteforce_matches_qubo_diagonalisation` — if the converter's penalty weights were
 wrong, exhaustive enumeration and exact diagonalisation of the QUBO would disagree and every
@@ -121,10 +121,10 @@ portfolio notebooks, and the strongest QAOA portfolio repositories on GitHub bef
 
 **Adopted — a genuine risk term.** The objective was expected value under a budget: a knapsack,
 not a portfolio. The canonical mean-variance formulation pairs a linear return term with a
-quadratic risk term, so we added a Herfindahl penalty on capital concentrated in one loan
-purpose — using the `purpose` column we had been ignoring. Sector concentration limits are how
-credit books are really managed, and the penalty introduces ZZ couplings between same-sector
-applicants at **zero extra qubits**.
+quadratic risk term, so we added a Herfindahl penalty on capital concentrated in one customer
+segment. Segment concentration limits are how credit books are really managed — accounts in a
+segment default together — and the penalty introduces ZZ couplings between same-segment
+accounts at **zero extra qubits**.
 
 **Tested and rejected — CVaR aggregation.** Barkoutsos et al. (*Quantum* **4**, 256 (2020))
 report CVaR aggregation converging faster and better on every problem they tested, and it is
@@ -134,7 +134,7 @@ than its own noise floor. We kept the default. `src/cvar_ablation.py` has the nu
 
 ## The two numbers we invented
 
-German Credit has no interest rate and no recovery rate, so the 12% APR and 60% LGD in
+The dataset has no interest rate and no recovery rate, so the 18% APR and 60% LGD in
 [`src/data.py`](src/data.py) are assumptions, not data. `src/sensitivity.py` tests what that
 costs. Two results: the portfolio depends **only on the ratio ρ = LGD/APR**, not on either
 number individually (a knapsack's argmax is invariant under positive scaling of the objective —
@@ -161,7 +161,8 @@ nobody can motivate. Expect the question and answer it before it is asked.
 **Why the budget is the qubit bottleneck.** The capital constraint is an *inequality*, so
 `QuadraticProgramToQubo` introduces an integer slack variable and binary-expands it, costing
 `ceil(log2(budget+1))` extra qubits. Discretising capital into coarse units is what keeps the
-instance simulable. Pool sizes map to qubits as: 6→10, 8→12, 10→14, 12→16.
+instance simulable. Qubit count is `n + ceil(log2(budget+1))` — the pool size plus the binary
+expansion of the budget slack, typically `n + 4`.
 
 **Why fairness is a penalty, not a constraint.** A second inequality constraint would add more
 slack qubits. A squared parity gap folds into the objective at **zero** qubit cost — and it is
@@ -180,15 +181,53 @@ clearly *worst*. The spread within a single (instance, depth) cell is as large a
 between depths, so **no depth is meaningfully best at this scale** and any table claiming one
 is reporting noise.
 
+## About the dataset
+
+[UCI "Default of Credit Card Clients"](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients)
+— 30,000 real Taiwanese credit-card accounts from April–September 2005, 23 predictors, with a
+**real 22.1% default rate**. Downloaded on first run by [`src/data.py`](src/data.py).
+
+**We started on UCI Statlog (German Credit) and moved off it deliberately.** It is the usual
+credit-scoring benchmark, but:
+
+| | German Credit | This dataset |
+| --- | --- | --- |
+| Rows | 1,000 | **30,000** |
+| Vintage | 1973–75 | **2005** |
+| Default rate | 30% — a *stratified over-sample*, 700/300 by construction | **22.1%, real** |
+| Protected attribute | Sex **not recoverable** | Sex coded unambiguously |
+
+The last row decided it. Grömping (2019), *South German Credit Data: Correcting a Widely Used
+Data Set* (Report 4/2019, Beuth University of Applied Sciences Berlin), shows German Credit's
+published coding is wrong in places: male singles and female non-singles share code `A92`, and
+in the published file `A95` (female:single) has **zero rows** — so any "female" group is a mixed
+bag, and a fairness result computed on it measures nothing. Most published fairness work on that
+dataset uses exactly this variable.
+
+The over-sampled base rate mattered too: it inflated every expected-value figure, so the money
+was never realistic. Here it is.
+
+**Modelling choices this dataset forces.** It is revolving credit, so exposure at default is the
+outstanding balance, not the credit limit — we use the latest statement balance clipped to
+`[0, limit]`. Using the limit would overstate every position by roughly an order of magnitude.
+`SEX` and the `group` label derived from it are dropped from the model's features so the
+classifier cannot condition on sex directly.
+
+**Still imperfect, and worth saying:** it is one bank, one country, one six-month window in 2005,
+and the segment used for the concentration term (education band) is a proxy for an industry
+sector rather than the real thing.
+
 ## Honest limitations
 
-- **QAOA is ~1000× slower than exhaustive classical search at this size.** We do not claim a
-  speed advantage; we measure the gap and show where the method stops being simulable.
+- **QAOA is orders of magnitude slower than exhaustive classical search at this size.** We do
+  not claim a speed advantage; we measure the gap and show where the method stops being simulable.
 - Beyond ~20 qubits the statevector simulation falls off a cliff (28 qubits = 4.3 GB).
-- The protected attribute derives from German Credit attribute 9, which encodes marital status
-  and sex jointly; that coding's reliability has been questioned. It demonstrates the mechanism
-  of a fairness-constrained allocator, not a finding about lending discrimination.
-- Logistic regression outperforms the gradient-boosted model on this dataset. We report it.
+- The fairness term demonstrates the *mechanism* of a parity-constrained allocator. It is not a
+  finding about lending discrimination in Taiwan in 2005.
+- The concentration term uses education band as the customer segment, which is a proxy for a
+  real industry-sector exposure rather than the thing itself.
+- The 18% APR and 60% LGD are assumptions. Only their ratio matters, and we measure the
+  sensitivity to it rather than asserting the numbers are right.
 
 ## Stack
 
@@ -199,5 +238,6 @@ Pinned deliberately — `qiskit-optimization` requires `qiskit<3`, and QAOA/COBY
 qiskit==2.5.2   qiskit-aer==0.17.2   qiskit-optimization==0.7.0   scikit-learn   streamlit
 ```
 
-Data: [UCI Statlog German Credit](https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data)
-(1000 applicants, 20 attributes), downloaded on first run to `data/`.
+Data: [UCI Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients)
+(30,000 accounts, 23 predictors, Taiwan 2005), downloaded on first run to `data/`.
+`xlrd` is required to read the published `.xls`.

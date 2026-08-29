@@ -7,13 +7,13 @@ state -- rests on them. A judge is entitled to ask where they came from.
 
 The answer turns out to be better than "we guessed". Expanding the expected value,
 
-    EV_i = A_i * [ (1 - p_i) * apr * d_i/12  -  p_i * lgd ]
-         = A_i * apr * [ (1 - p_i) * d_i/12  -  p_i * (lgd/apr) ]
+    EV_i = A_i * [ (1 - p_i) * apr  -  p_i * lgd ]
+         = A_i * apr * [ (1 - p_i)  -  p_i * (lgd/apr) ]
 
 so scaling apr and lgd together by any k > 0 scales every EV_i by k. A knapsack's argmax
 is invariant under positive scaling of the objective, so **the selected portfolio depends
 only on the ratio rho = lgd/apr, not on either number individually**. Our baseline
-(12%, 0.60) is just one point on the line rho = 5.
+(18%, 0.60) is just one point on the line rho = 10/3.
 
 That reduces two invented numbers to one, and this script measures sensitivity to that one.
 Solved exactly (brute force), so the result reflects the problem, not solver noise.
@@ -38,9 +38,9 @@ import solvers
 
 ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
 
-BASE_APR, BASE_LGD = 0.12, 0.60
+BASE_APR, BASE_LGD = 0.18, 0.60
 BASE_RHO = BASE_LGD / BASE_APR                      # 5.0
-RHOS = [2.0, 3.0, 4.0, 5.0, 6.0, 7.5, 10.0]
+RHOS = [1.5, 2.0, 2.5, 10.0 / 3.0, 4.0, 5.0, 7.0]
 SEEDS = list(range(8))
 POOL_N = 10
 
@@ -52,13 +52,9 @@ def rescore(scored: pd.DataFrame, apr: float, lgd: float) -> pd.DataFrame:
     Only the cash-flow terms move, which is exactly the thing under test.
     """
     df = scored.copy()
-    df["principal"] = df["credit_amount"].astype(float)
-    df["interest_if_repaid"] = df["principal"] * apr * (df["duration_months"] / 12.0)
+    df["interest_if_repaid"] = df["principal"] * apr
     df["loss_if_default"] = df["principal"] * lgd
-    mask = df["is_test"] & df["p_default"].notna()
-    df.loc[mask, "expected_value"] = data_mod.expected_value(
-        df[mask], df.loc[mask, "p_default"].to_numpy()
-    )
+    df["expected_value"] = data_mod.expected_value(df, df["p_default"].to_numpy())
     return df
 
 
@@ -83,7 +79,7 @@ def selected_ids_fixed_pool(scored: pd.DataFrame, base: pf.PortfolioProblem,
     df = rescore(scored, apr, lgd)
     ev = data_mod.expected_value(df.loc[base.ids], df.loc[base.ids, "p_default"].to_numpy())
     p = pf.PortfolioProblem(ids=base.ids, ev=np.asarray(ev, dtype=float), units=base.units,
-                            budget_units=base.budget_units, sex=base.sex,
+                            budget_units=base.budget_units, group=base.group,
                             fairness_lambda=0.0, meta=base.meta)
     x = solvers.solve_bruteforce(p).x
     return {i for i, keep in zip(p.ids, x) if keep}
@@ -124,7 +120,7 @@ def main() -> None:
             sizes.append(len(sel))
             self_ = selected_ids_fixed_pool(scored, base_problems[s], BASE_APR, BASE_APR * rho)
             fixed.append(jaccard(self_, base_fixed[s]))
-        rows.append(dict(rho=rho, lgd_at_12pct_apr=BASE_APR * rho,
+        rows.append(dict(rho=rho, lgd_at_base_apr=BASE_APR * rho,
                          jaccard_mean=float(np.mean(fixed)),
                          jaccard_min=float(np.min(fixed)),
                          jaccard_full_pipeline=float(np.mean(full)),

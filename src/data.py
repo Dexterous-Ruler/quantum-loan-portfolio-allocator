@@ -1,36 +1,64 @@
-"""UCI Statlog (German Credit) loader + loan economics.
+"""UCI "Default of Credit Card Clients" (Taiwan, 2005) loader + loan economics.
 
-Source: https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data
-1000 applicants, 20 attributes, binary target (1 = good/repaid, 2 = bad/default).
+Source: https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients
+30,000 clients, 23 predictors, binary target (1 = defaulted next month).
+
+WHY THIS DATASET, AND NOT GERMAN CREDIT
+---------------------------------------
+We started on UCI Statlog (German Credit), the usual credit-scoring benchmark, and moved off
+it deliberately. It is 1,000 rows of 1973-75 West German lending, its 30% default rate is an
+artefact of a stratified sample with bad credits heavily oversampled (700 good / 300 bad by
+construction), and Groemping (2019), "South German Credit Data: Correcting a Widely Used Data
+Set" (Report 4/2019, Beuth University of Applied Sciences Berlin), showed several of its
+variable codings are simply wrong. In particular sex is NOT recoverable: male singles and
+female non-singles share code A92, and A95 (female:single) has zero rows in the published
+file, so any "female" group is a mixed bag.
+
+This dataset fixes every one of those:
+  * 30,000 rows rather than 1,000
+  * 2005 rather than 1973-75
+  * a REAL 22.1% default rate, not a constructed one -- so expected values are in real money
+  * sex, age, education and marital status are all coded unambiguously, which means the
+    fairness constraint operates on an attribute that means what it says
+
+ECONOMICS
+---------
+This is revolving credit, so the exposure at default is the outstanding balance, not the
+credit limit. We use the most recent statement balance clipped to [0, limit]: a customer with
+a NT$500,000 limit and a NT$12,000 balance puts NT$12,000 at risk, not NT$500,000. Using the
+limit instead would overstate every position by roughly an order of magnitude.
 """
 from __future__ import annotations
 
+import io
 import ssl
 import urllib.request
+import zipfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-DATA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data"
-RAW = Path(__file__).resolve().parent.parent / "data" / "german.raw"
+DATA_URL = "https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip"
+RAW = Path(__file__).resolve().parent.parent / "data" / "taiwan.zip"
+XLS_NAME = "default of credit card clients.xls"
 
-COLUMNS = [
-    "checking_status", "duration_months", "credit_history", "purpose", "credit_amount",
-    "savings_status", "employment_since", "installment_rate", "personal_status_sex",
-    "other_debtors", "residence_since", "property", "age_years", "other_installment_plans",
-    "housing", "existing_credits", "job", "num_dependents", "telephone", "foreign_worker",
-    "target",
-]
+TARGET = "default payment next month"
 
+# Repayment-status history (PAY_*) is the dominant signal in this dataset; bill and payment
+# amounts add the rest. AGE stays a feature -- sex is the protected attribute here, and unlike
+# German Credit it is coded unambiguously.
 NUMERIC = [
-    "duration_months", "credit_amount", "installment_rate", "residence_since",
-    "age_years", "existing_credits", "num_dependents",
+    "LIMIT_BAL", "AGE",
+    "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
+    "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
+    "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",
 ]
 
-# Attribute 9 encodes personal status AND sex jointly.
-# A91 male:divorced  A92 female:div/sep/married  A93 male:single  A94 male:married/widowed  A95 female:single
-FEMALE_CODES = {"A92", "A95"}
+# EDUCATION codes 0, 4, 5 and 6 are undocumented or "other" and are individually tiny;
+# folding them together avoids near-empty one-hot columns.
+EDUCATION_LABELS = {1: "graduate", 2: "university", 3: "high-school"}
+MARRIAGE_LABELS = {1: "married", 2: "single", 3: "other"}
 
 
 def download(force: bool = False) -> Path:
@@ -40,63 +68,73 @@ def download(force: bool = False) -> Path:
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    with urllib.request.urlopen(DATA_URL, timeout=30, context=ctx) as r:
+    with urllib.request.urlopen(DATA_URL, timeout=120, context=ctx) as r:
         RAW.write_bytes(r.read())
     return RAW
 
 
 def load() -> pd.DataFrame:
-    """Return the raw frame with a clean binary `default` target and a `sex` column."""
+    """Return the frame with a clean binary `default`, a protected `group`, and a `sector`."""
     path = download()
-    df = pd.read_csv(path, sep=r"\s+", header=None, names=COLUMNS)
-    assert len(df) == 1000, f"expected 1000 rows, got {len(df)}"
+    with zipfile.ZipFile(path) as z:
+        # Row 0 is a merged banner; the real header is row 1.
+        df = pd.read_excel(io.BytesIO(z.read(XLS_NAME)), header=1)
 
-    # Target: dataset codes 1 = good, 2 = bad. We model P(default), so bad -> 1.
-    df["default"] = (df["target"] == 2).astype(int)
-    df = df.drop(columns=["target"])
+    assert len(df) == 30000, f"expected 30000 rows, got {len(df)}"
+    df = df.drop(columns=["ID"])
+    df["default"] = df[TARGET].astype(int)
+    df = df.drop(columns=[TARGET])
 
-    # Protected attribute for the fairness constraint.
-    df["sex"] = np.where(df["personal_status_sex"].isin(FEMALE_CODES), "female", "male")
+    # Protected attribute. Unlike German Credit's attribute 9, this one is unambiguous.
+    df["group"] = np.where(df["SEX"] == 2, "female", "male")
+
+    # Concentration axis for the diversification term. Retail books are managed against
+    # segment limits, and education band is the cleanest segment this dataset offers.
+    df["sector"] = df["EDUCATION"].map(EDUCATION_LABELS).fillna("other")
+    df["marital"] = df["MARRIAGE"].map(MARRIAGE_LABELS).fillna("other")
     return df
 
 
-def add_loan_economics(df: pd.DataFrame, apr: float = 0.12, lgd: float = 0.60) -> pd.DataFrame:
+def add_loan_economics(df: pd.DataFrame, apr: float = 0.18, lgd: float = 0.60) -> pd.DataFrame:
     """Attach the cash-flow terms the optimiser needs.
 
-    apr  -- flat annual percentage rate the lender charges.
-    lgd  -- loss given default, i.e. fraction of principal lost when a loan goes bad.
+    apr  -- annual percentage rate on revolving balances. 18% is typical of Taiwanese card
+            lending in this period and higher than an instalment-loan rate, which is the
+            point: card APRs price in exactly the default risk we are modelling.
+    lgd  -- loss given default, the fraction of exposure lost when an account goes bad.
+
+    Only the RATIO lgd/apr affects which accounts get funded -- see src/sensitivity.py.
     """
     out = df.copy()
-    out["principal"] = out["credit_amount"].astype(float)
-    out["interest_if_repaid"] = out["principal"] * apr * (out["duration_months"] / 12.0)
+    # Exposure at default: the outstanding balance, floored at zero (overpayments show as
+    # negative bills) and capped at the credit limit.
+    out["principal"] = np.clip(out["BILL_AMT1"], 0, out["LIMIT_BAL"]).astype(float)
+    out["interest_if_repaid"] = out["principal"] * apr
     out["loss_if_default"] = out["principal"] * lgd
     return out
 
 
 def expected_value(df: pd.DataFrame, p_default: np.ndarray) -> np.ndarray:
-    """Risk-adjusted expected profit per loan.
+    """Risk-adjusted expected profit per account.
 
-    EV = P(repay) * interest  -  P(default) * LGD * principal
+    EV = P(repay) * interest  -  P(default) * LGD * exposure
 
-    This is the quantity the portfolio optimiser maximises. It is where the AI model
-    feeds the quantum module: p_default comes from the classifier, and it sets the
-    linear coefficients of the QUBO cost Hamiltonian.
+    This is where the AI model feeds the quantum module: p_default comes from the classifier
+    and sets the linear coefficients of the QUBO cost Hamiltonian.
     """
     p_default = np.asarray(p_default, dtype=float)
-    return (1.0 - p_default) * df["interest_if_repaid"].to_numpy() - p_default * df["loss_if_default"].to_numpy()
-
-
-FEATURES = [c for c in COLUMNS if c not in ("target",)]
+    return ((1.0 - p_default) * df["interest_if_repaid"].to_numpy()
+            - p_default * df["loss_if_default"].to_numpy())
 
 
 def xy(df: pd.DataFrame):
-    """Feature matrix / target, excluding the protected attribute and its parent column.
+    """Feature matrix / target, excluding the protected attribute and derived economics.
 
-    We deliberately drop `personal_status_sex` and `sex` from the model inputs. That does
-    NOT make the model fair (proxies remain) -- it just means unfairness has to be measured
-    on outcomes, which is what the fairness constraint in the optimiser does.
+    `SEX` and the `group` label built from it are dropped so the classifier cannot condition
+    on sex directly. That does NOT make the model fair -- proxies remain -- it means unfairness
+    has to be measured on outcomes, which is what the optimiser's fairness term does.
     """
-    drop = ["default", "sex", "personal_status_sex", "principal", "interest_if_repaid", "loss_if_default"]
+    drop = ["default", "group", "SEX", "sector", "marital",
+            "principal", "interest_if_repaid", "loss_if_default"]
     X = df.drop(columns=[c for c in drop if c in df.columns])
-    y = df["default"].to_numpy()
-    return X, y
+    return X, df["default"].to_numpy()

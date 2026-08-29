@@ -18,10 +18,10 @@ problem left."
 out loud as it updates (10→14→16).
 
 **1:30 — Live: toggle the fairness penalty.** This is the money shot. Approval-rate gap goes
-from −42% to −2.9%; profit drops ~10%.
+from 0.28 to 0.03; profit drops about 4%.
 "We didn't write a fairness paragraph. We put parity in the objective as a squared penalty —
 which costs zero extra qubits and is what makes this Hamiltonian genuinely quadratic. And we
-can tell you the price of parity in Deutschmarks."
+can tell you the price of parity in money."
 
 **2:10 — Open the Cost Hamiltonian tab.** Point at one ZZ term.
 "That coupling is two specific applicants competing for the same capital."
@@ -90,16 +90,27 @@ default statistic reports false robustness. As for the actual degradation curve:
 within-level scatter is 7× the between-level spread, so we report the sweep as inconclusive.
 Resolving it would take ~220 seeds per level, about 19 hours of noisy simulation.
 
+**"Why should I trust this dataset?"**
+It is 30,000 real Taiwanese credit-card accounts from 2005 with a real 22.1% default rate. We
+started on German Credit, the usual benchmark, and moved off it: 1,000 rows from 1973-75, a
+default rate that is a stratified over-sample rather than a real rate, and — decisively — sex is
+not recoverable from it. Groemping (2019) showed male singles and female non-singles share code
+A92, and A95 has zero rows in the published file, so any "female" group is a mixed bag. Most
+published fairness work on that dataset uses exactly that variable.
+
 **"Is your AI model any good?"**
-AUC 0.777 calibrated GBM. Tuned logistic regression actually beats it at 0.799 — expected at
-n=1000 — and we report that. For this pipeline calibration matters more than discrimination,
-because the optimiser multiplies these probabilities by cash amounts.
+AUC 0.780 for the calibrated gradient-boosted model against 0.715 for tuned logistic regression,
+on 21,000 training rows. On the 1,000-row German Credit data we started from that ordering was
+reversed — boosting needs data to beat a well-specified linear model, and that is part of why we
+moved datasets. Calibration matters more than discrimination here, because the optimiser
+multiplies these probabilities by cash amounts: Brier is the number to read (0.135).
 
 ---
 
 ## Things to *not* say
 
 - Don't say "quantum speedup." You don't have one and the numbers are on your own page.
-- Don't say the model is "fair." Say you can price parity.
-- Don't call the German Credit sex attribute reliable — flag that its coding is disputed
-  before a judge does.
+- Don't say the model is "fair." Say you can *price* parity: the approval-rate gap closes from
+  0.28 to 0.03 for about 4% of profit.
+- Don't quote absolute profit as if it were a real P&L. It is one 10-account slice of a 2005
+  Taiwanese card book.

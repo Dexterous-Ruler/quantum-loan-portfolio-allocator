@@ -40,10 +40,39 @@ def load_ai_metrics() -> dict:
 
 st.title("Quantum-Assisted Loan-Portfolio Allocator")
 st.caption(
-    "AI predicts default risk per applicant -> those probabilities set the coefficients of a "
-    "QUBO -> QAOA allocates a fixed capital budget across the loan book. "
-    "The AI and quantum modules run in **series**, not side by side."
+    "A bank has more creditworthy customers than capital. This picks which subset to fund — "
+    "using a classical AI model to price the risk and a **quantum** optimiser to choose the book."
 )
+
+with st.expander("📖  What is this, and what am I looking at?  — read me first", expanded=False):
+    st.markdown("""
+### The problem in one sentence
+A lender has 6,000 viable credit-card customers but only enough capital for a handful.
+**Which subset should it fund?** That is a *0-1 knapsack* — pick items with the best value
+that fit in a bag — and it is NP-hard, which is why it is worth pointing a quantum computer at.
+
+### The pipeline, step by step
+
+| # | Stage | What happens | Why it matters |
+|---|---|---|---|
+| 1 | **Real data** | 30,000 real Taiwanese credit-card accounts (2005), 22.1% of which defaulted | Nothing here is synthetic |
+| 2 | **AI model** | A gradient-boosted classifier predicts `P(default)` for each customer | This is the "AI" half |
+| 3 | **Money** | `EV = P(repay)×interest − P(default)×loss` per customer | Turns a probability into an amount |
+| 4 | **QUBO** | Maximise total EV, minus risk and fairness penalties, subject to a capital budget | The optimisation problem |
+| 5 | **Quantum** | The QUBO becomes an Ising Hamiltonian; **QAOA** searches for its lowest-energy state | This is the "quantum" half |
+| 6 | **Answer** | The winning bitstring *is* the list of customers to fund | |
+
+### The key idea
+Most hybrid projects run AI and quantum **side by side** — train a classifier, then train a
+quantum classifier, compare the two. Ours run **in series**: the AI model's output *becomes*
+the quantum problem's coefficients. Delete the AI and there is no quantum problem left.
+
+### What we honestly found
+Quantum does **not** beat classical here, and we say so on the results page. At 14 qubits an
+ordinary exhaustive search is hundreds of times faster and always exact. What this demonstrates
+is a *correct end-to-end mapping* and an honest measurement of where it breaks — which is what
+the brief asked for ("small qubit counts, simulator only").
+""")
 
 scored = load_scored()
 metrics = load_ai_metrics()
@@ -51,22 +80,41 @@ metrics = load_ai_metrics()
 # ------------------------------------------------------------------ controls
 with st.sidebar:
     st.header("Controls")
-    pool_n = st.select_slider("Applicants in pool", options=[6, 8, 10, 12], value=10,
-                              help="Drives qubit count: 6->10, 8->12, 10->14, 12->16 qubits.")
-    budget_fraction = st.slider("Capital budget (fraction of total requested)", 0.20, 0.90, 0.45, 0.05)
+    st.caption("Every control below changes the *problem*, and the optimiser re-solves it.")
+    pool_n = st.select_slider("Customers in pool", options=[6, 8, 10, 12], value=10,
+                              help="Qubit count = applicants + binary slack for the budget inequality, "
+                                   "roughly n + 4. Shown live in the metric above.")
+    budget_fraction = st.slider("Capital budget (fraction of total requested)", 0.20, 0.90, 0.45, 0.05,
+                                help="How much capital the bank has, as a share of what all "
+                                     "customers together want. 0.45 means it can fund under "
+                                     "half the book — so the optimiser must choose.")
     # Default p=1. Across repeated QAOA seeds the depths are statistically indistinguishable
     # -- the apparent "best depth" flipped between benchmark runs -- so we take the cheapest
     # one rather than pretending a winner exists. See DELIVERABLE_4.md, table A.
-    reps = st.select_slider("QAOA depth p", options=[1, 2, 3], value=1)
-    risk_on = st.toggle("Diversify across sectors", value=False,
-                        help="Penalises capital concentrated in one loan purpose — the "
-                             "Markowitz risk term. Adds zero qubits.")
-    risk_gamma = st.slider("Risk aversion gamma", 0, 6000, 2000, 250, disabled=not risk_on)
-    fairness_on = st.toggle("Apply fairness penalty", value=False,
-                            help="Penalises approval-rate disparity between groups. Adds zero qubits.")
-    fairness_lambda = st.slider("Fairness weight lambda", 0, 40000, 8000, 1000,
-                                disabled=not fairness_on)
-    seed = st.number_input("Instance seed", 0, 999, 0, 1)
+    reps = st.select_slider("QAOA depth p", options=[1, 2, 3], value=1,
+                            help="How many layers deep the quantum circuit goes. In theory "
+                                 "deeper searches better; we measured that at this size the "
+                                 "difference is smaller than the run-to-run noise, so we "
+                                 "default to the cheapest.")
+    risk_on = st.toggle("Diversify across segments", value=False,
+                        help="Stops the optimiser piling all the capital into one customer "
+                             "segment. Segments default together in a downturn, so a "
+                             "concentrated book is fragile. This is the classic Markowitz "
+                             "risk term — and it costs zero extra qubits.")
+    risk_gamma = st.slider("Risk aversion gamma", 0, 120000, 40000, 5000, disabled=not risk_on,
+                           help="Higher = the bank cares more about spreading capital across "
+                                "customer segments than about raw profit.")
+    fairness_on = st.toggle("Enforce approval-rate fairness", value=False,
+                            help="Pushes the approval rate for men and women toward equality. "
+                                 "A pure profit-maximiser has no reason to do this, so it has "
+                                 "to be written into the objective. Costs zero extra qubits.")
+    fairness_lambda = st.slider("Fairness weight lambda", 0, 800000, 200000, 25000,
+                                disabled=not fairness_on,
+                                help="Higher = the bank cares more about approving men and "
+                                     "women at equal rates than about raw profit.")
+    seed = st.number_input("Instance seed", 0, 999, 0, 1,
+                           help="Draws a different random pool of customers. Change it to "
+                                "confirm nothing here is cherry-picked.")
     go = st.button("Optimise portfolio", type="primary", width="stretch")
 
 GAMMA = float(risk_gamma) if risk_on else 0.0
@@ -79,21 +127,37 @@ problem = pf.build_problem(
 _, n_qubits = pf.qubo_and_qubits(problem)
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Applicants", problem.n)
-c2.metric("Capital budget", f"{problem.budget_units} units")
-c3.metric("Qubits", n_qubits)
-c4.metric("AI model AUC", f"{metrics['gbm_auc']:.3f}")
+c1.metric("Customers in pool", problem.n,
+          help="How many candidate accounts the optimiser is choosing between. Each one "
+               "becomes a yes/no decision — and therefore one qubit.")
+c2.metric("Capital budget", f"{problem.budget_units} units",
+          help=f"Total capital available, in units of NT${pf.UNIT_SIZE:,.0f} of exposure. "
+               "The optimiser cannot exceed this — it is the constraint that makes the "
+               "problem hard.")
+c3.metric("Qubits", n_qubits,
+          help="Customers + extra qubits to encode the budget constraint. A quantum computer "
+               "would need this many. Above ~30, simulating it becomes impossible on a laptop.")
+c4.metric("AI model AUC", f"{metrics['gbm_auc']:.3f}",
+          help="How well the risk model separates defaulters from non-defaulters. 0.5 = coin "
+               "flip, 1.0 = perfect. Around 0.78 is normal for credit scoring.")
 
 # ------------------------------------------------------------------ applicants
-st.subheader("1. AI model output — risk-adjusted value per applicant")
-view = problem.meta[["credit_amount", "duration_months", "age_years", "sex", "purpose",
+st.subheader("1. The AI model prices each customer")
+st.caption(
+    "The classifier read each customer's payment history and produced **P(default)**. "
+    "Combined with their outstanding balance, that gives **expected value** — what the bank "
+    "expects to earn (or lose) by funding them. Red = riskier. These numbers are the input "
+    "to the quantum step; nothing below is hand-picked."
+)
+view = problem.meta[["LIMIT_BAL", "principal", "AGE", "group", "sector",
                      "p_default", "expected_value"]].copy()
 view.insert(0, "applicant", [f"#{i}" for i in problem.ids])
 view["capital_units"] = problem.units
-view = view.rename(columns={"p_default": "P(default)", "expected_value": "expected value (DM)",
-                            "purpose": "sector"})
+view = view.rename(columns={"p_default": "P(default)", "expected_value": "expected value (NT$)",
+                            "LIMIT_BAL": "credit limit", "principal": "exposure",
+                            "AGE": "age"})
 st.dataframe(
-    view.style.format({"P(default)": "{:.1%}", "expected value (DM)": "{:,.0f}", "credit_amount": "{:,.0f}"})
+    view.style.format({"P(default)": "{:.1%}", "expected value (NT$)": "{:,.0f}", "credit limit": "{:,.0f}", "exposure": "{:,.0f}"})
         .background_gradient(subset=["P(default)"], cmap="Reds"),
     width="stretch", hide_index=True,
 )
@@ -130,7 +194,12 @@ if not go:
     st.stop()
 
 # ------------------------------------------------------------------ solve
-st.subheader("2. Allocation under the capital budget")
+st.subheader("2. The quantum optimiser picks the book")
+st.caption(
+    "QAOA searched for the highest-value set of customers that fits the capital budget. "
+    "**FUND** = selected. The Exact and Greedy columns are classical solvers on the *same* "
+    "problem, so you can see where they agree and disagree."
+)
 
 # Classical solvers finish in milliseconds, so show them before starting QAOA -- the jury
 # sees a populated screen immediately instead of an 8-second blank spinner.
@@ -148,19 +217,19 @@ q = solvers.Solution(_q["name"], _q["x"], _q["objective"], _q["seconds"], _q["fe
 
 sel = pd.DataFrame({
     "applicant": [f"#{i}" for i in problem.ids],
-    "sex": problem.sex,
+    "group": problem.group,
     "sector": problem.sector,
     "capital_units": problem.units,
-    "expected value (DM)": problem.ev,
+    "expected value (NT$)": problem.ev,
     "QAOA": np.where(q.x == 1, "FUND", "-"),
     "Exact": np.where(exact.x == 1, "FUND", "-"),
     "Greedy": np.where(greedy.x == 1, "FUND", "-"),
 })
 left, right = st.columns([3, 2])
 with left:
-    st.dataframe(sel.style.format({"expected value (DM)": "{:,.0f}"}), width="stretch", hide_index=True)
+    st.dataframe(sel.style.format({"expected value (NT$)": "{:,.0f}"}), width="stretch", hide_index=True)
 with right:
-    st.metric("Expected profit (QAOA)", f"{problem.ev @ q.x:,.0f} DM")
+    st.metric("Expected profit (QAOA)", f"NT${problem.ev @ q.x:,.0f}")
     st.metric("Capital deployed", f"{int(problem.units @ q.x)} / {problem.budget_units} units")
     n_sectors = len(set(problem.sector[q.x == 1])) if problem.sector is not None else 0
     st.metric("Concentration H", f"{problem.concentration(q.x):.3f}",
@@ -177,7 +246,7 @@ with right:
         st.caption(
             f"Without diversification the optimum earns {flat.ev @ fb.x:,.0f} DM at "
             f"H={flat.concentration(fb.x):.3f}. Diversifying costs "
-            f"{(flat.ev @ fb.x) - (problem.ev @ q.x):,.0f} DM."
+            f"{(flat.ev @ fb.x) - (problem.ev @ q.x):,.0f} NT$."
         )
     if problem.fairness_lambda > 0:
         base = pf.build_problem(scored, n=pool_n, budget_fraction=budget_fraction,
@@ -186,7 +255,7 @@ with right:
         st.caption(
             f"Unconstrained optimum would earn {base.ev @ b.x:,.0f} DM at a "
             f"{base.parity_gap(b.x):+.1%} gap. Fairness costs "
-            f"{(base.ev @ b.x) - (problem.ev @ q.x):,.0f} DM."
+            f"{(base.ev @ b.x) - (problem.ev @ q.x):,.0f} NT$."
         )
 
 # ------------------------------------------------------------------ visuals
@@ -224,6 +293,11 @@ def budget_sweep(pool_n: int, lam: float, seed: int, gamma: float = 0.0):
 
 
 st.subheader("3. What the optimiser actually did")
+st.caption(
+    "Left: who got funded and who did not, by size of their exposure. "
+    "Right: the profit achievable at **every** budget level — the orange dot is where you "
+    "are now. Drag the budget slider and watch it move along the curve."
+)
 vcol1, vcol2 = st.columns(2)
 
 with vcol1:
@@ -236,7 +310,7 @@ with vcol1:
             color=[QCOL if f else GREY for f in funded],
             edgecolor="none")
     for i, (u, f, ev) in enumerate(zip(vals, funded, problem.ev[order])):
-        ax.text(u + 0.08, i, f"{ev:,.0f} DM", va="center", fontsize=7,
+        ax.text(u + 0.08, i, f"{ev:,.0f}", va="center", fontsize=7,
                 color="#1a1a1a" if f else "#8a8a94")
     ax.set_yticks(range(len(vals)))
     ax.set_yticklabels(labels, fontsize=8)
@@ -258,7 +332,7 @@ with vcol2:
     ax.scatter([problem.budget_units], [here], s=140, color=ACC, zorder=5,
                edgecolor="white", linewidth=1.5, label="Your current budget")
     ax.set_xlabel("Capital budget (units)")
-    ax.set_ylabel("Expected profit (DM)")
+    ax.set_ylabel("Expected profit (NT$)")
     ax.set_title("Profit against every possible budget\n"
                  "Drag the budget slider and watch the dot move",
                  fontsize=9, loc="left")
@@ -274,7 +348,12 @@ with vcol2:
     )
 
 # ------------------------------------------------------------------ comparison
-st.subheader("4. Quantum vs classical — same QUBO, same instance")
+st.subheader("4. Quantum vs classical — the honest comparison")
+st.caption(
+    "All three solvers attack the **identical** problem. *Approximation ratio* is how close "
+    "each got to the true best answer (1.0000 = perfect). *Wall clock* is how long it took. "
+    "Read both columns together — that is the whole story."
+)
 cmp = pd.DataFrame([
     {"solver": s.name, "objective": s.objective, "approx ratio": s.objective / exact.objective,
      "wall clock (s)": s.seconds, "feasible": s.feasible}
@@ -314,7 +393,12 @@ st.download_button(
 )
 
 # ------------------------------------------------------------------ show your work
-st.subheader("5. What the quantum module is actually doing")
+st.subheader("5. Under the hood — the actual quantum circuit")
+st.caption(
+    "Proof that a real quantum algorithm ran, not a simulation of one in name only. "
+    "The Hamiltonian is the energy landscape whose lowest point is the answer; the circuit "
+    "is what searches it; the distribution is what measurement returned."
+)
 tabs = st.tabs(["The circuit", "Cost Hamiltonian", "Alternative portfolios"])
 with tabs[0]:
     stats = solvers.ansatz_stats(problem, reps=reps)

@@ -114,6 +114,9 @@ def train(seed: int = RANDOM_STATE):
     df_scored.loc[mask, "expected_value"] = data_mod.expected_value(
         df_scored[mask], df_scored.loc[mask, "p_default"].to_numpy()
     )
+    # 30k rows x 25 cols of scored output is 8 MB of CSV that nothing downstream reads in
+    # full; keep only the held-out rows the optimiser can actually draw from.
+    df_scored = df_scored[df_scored["is_test"]].copy()
     df_scored.to_csv(ARTIFACTS / "scored_applicants.csv", index=False)
 
     return model, metrics, df_scored
@@ -123,4 +126,4 @@ if __name__ == "__main__":
     _, m, scored = train()
     print(json.dumps(m, indent=2))
     print("\nscored test-set rows:", int(scored["is_test"].sum()))
-    print(scored.loc[scored.is_test, ["credit_amount", "p_default", "expected_value"]].describe().round(2))
+    print(scored[["principal", "p_default", "expected_value"]].describe().round(2))

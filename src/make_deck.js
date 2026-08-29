@@ -147,7 +147,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
     ["0-1 knapsack, not curve fitting",
      "Choosing which loans to fund under a capital budget is weakly NP-hard, natively binary, natively quadratic. Its ground state IS the answer."],
     ["A real Ising Hamiltonian",
-     `${14} qubits, 105 Pauli terms, transpiled depth 78, 182 two-qubit gates. We can point at a ZZ term and name the two applicants it couples.`],
+     `14 qubits, ~100 Pauli terms, transpiled depth 78, 182 two-qubit gates. We can point at a ZZ term and name the two applicants it couples.`],
     ["Not a quantum kernel on PCA features",
      "The 14 tabular-classifier themes ask you to project data into Hilbert space and hope. Here the mapping is derived, not assumed."],
   ];
@@ -252,7 +252,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
 // ---------------------------------------------------------------- 4. demo / fairness
 {
   const s = pres.addSlide();
-  titleBar(s, "Fairness as a constraint, not a footnote", "The live demo");
+  titleBar(s, "Diversification and fairness as constraints", "The live demo");
   s.addImage({ path: path.join(FIGS, "fairness.png"), x: M, y: 1.7, w: 6.5, h: 3.78 });
 
   s.addText("Move two sliders. That is the whole demo.", {
@@ -275,7 +275,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
     "We do not claim the model is fair. We claim we can put parity in the objective and tell you what it costs in Deutschmarks.",
     { x: 7.74, y: 5.8, w: 4.75, h: 0.62, isTextBox: true, margin: 0, fontFace: BODY, fontSize: 11.5, italic: true, color: ICE }
   );
-  s.addNotes("This is the money shot. Toggle fairness live and let the numbers move. Flag that German Credit attribute 9 encodes marital status and sex jointly and its coding is disputed -- before a judge does.");
+  s.addNotes("This is the money shot. Toggle diversification and fairness live and let the numbers move. If asked why age rather than sex: sex is not recoverable from this dataset -- male singles and female non-singles share code A92, and A95 has zero rows here. Groemping (2019) documents the coding errors.");
 }
 
 // ---------------------------------------------------------------- 5. results

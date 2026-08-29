@@ -41,18 +41,19 @@ def problem(scored):
 
 def test_dataset_shape_and_target():
     df = data_mod.load()
-    assert len(df) == 1000
+    assert len(df) == 30000
     assert set(df["default"].unique()) == {0, 1}
-    # The documented base rate for German Credit is exactly 30% bad.
-    assert df["default"].mean() == pytest.approx(0.30)
-    assert set(df["sex"].unique()) == {"male", "female"}
+    # Documented default rate for this dataset: 6,636 of 30,000 = 22.1%. Unlike German
+    # Credit this is a real rate, not a stratified over-sample.
+    assert df["default"].mean() == pytest.approx(0.2212, abs=1e-3)
+    assert set(df["group"].unique()) == {"male", "female"}
 
 
 def test_protected_attribute_excluded_from_features():
     df = data_mod.add_loan_economics(data_mod.load())
     X, _ = data_mod.xy(df)
-    assert "sex" not in X.columns
-    assert "personal_status_sex" not in X.columns
+    assert "group" not in X.columns
+    assert "SEX" not in X.columns
     # Leakage guard: the economics columns are derived from the target-adjacent amount
     # and must not be fed back in as features.
     for leak in ("principal", "interest_if_repaid", "loss_if_default"):
@@ -73,12 +74,23 @@ def test_expected_value_signs():
 # ---------------------------------------------------------------- QUBO mapping
 
 
-@pytest.mark.parametrize("n,expected_qubits", [(6, 10), (8, 12), (10, 14), (12, 16)])
-def test_qubit_count_is_stable(scored, n, expected_qubits):
-    """Qubit count drives everything about feasibility -- pin it against regressions."""
+@pytest.mark.parametrize("n", [6, 8, 10, 12])
+def test_qubit_count_follows_the_slack_formula(scored, n):
+    """Qubit count drives everything about feasibility, so pin how it is derived.
+
+    Pinning literal counts instead would be brittle: the budget depends on the pool draw,
+    which depends on the model's predictions, so retraining shifts them by a qubit. What
+    must hold is the formula -- n decision variables plus the binary expansion of the
+    budget inequality's integer slack -- and that the result stays simulable.
+    """
+    import math
+
     p = pf.build_problem(scored, n=n, fairness_lambda=0.0, seed=0)
     _, nq = pf.qubo_and_qubits(p)
-    assert nq == expected_qubits
+    expected_slack = math.ceil(math.log2(p.budget_units + 1))
+    assert nq == n + expected_slack, f"n={n} budget={p.budget_units} gave {nq} qubits"
+    # Statevector simulation dies around 30 qubits on a laptop; stay well inside that.
+    assert nq <= 20
 
 
 def test_fairness_penalty_costs_no_qubits(scored):
@@ -139,7 +151,7 @@ def test_greedy_never_beats_the_exact_optimum(scored):
 def test_fairness_penalty_actually_narrows_the_gap(scored):
     """The headline fairness claim, as an assertion rather than a chart."""
     gaps = []
-    for lam in (0.0, 64000.0):
+    for lam in (0.0, 400000.0):
         per_seed = []
         for seed in range(5):
             p = pf.build_problem(scored, n=10, fairness_lambda=lam, seed=seed)
@@ -158,14 +170,14 @@ def test_hamiltonian_is_well_formed(problem):
 
 def test_risk_term_costs_no_qubits(scored):
     plain = pf.build_problem(scored, n=10, risk_gamma=0.0, seed=0)
-    risky = pf.build_problem(scored, n=10, risk_gamma=5000.0, seed=0)
+    risky = pf.build_problem(scored, n=10, risk_gamma=40000.0, seed=0)
     assert pf.qubo_and_qubits(plain)[1] == pf.qubo_and_qubits(risky)[1]
 
 
 def test_risk_term_reduces_concentration(scored):
     """The headline claim for the diversification term, as an assertion."""
     hs = []
-    for gamma in (0.0, 3000.0):
+    for gamma in (0.0, 40000.0):
         per_seed = []
         for seed in range(5):
             p = pf.build_problem(scored, n=10, risk_gamma=gamma, seed=seed)
@@ -174,7 +186,7 @@ def test_risk_term_reduces_concentration(scored):
     assert hs[1] < hs[0], f"risk penalty did not reduce concentration: {hs}"
 
 
-@pytest.mark.parametrize("gamma,lam", [(1000.0, 0.0), (0.0, 8000.0), (2000.0, 8000.0)])
+@pytest.mark.parametrize("gamma,lam", [(20000.0, 0.0), (0.0, 60000.0), (20000.0, 60000.0)])
 def test_qubo_matches_bruteforce_with_penalties(scored, gamma, lam):
     """The risk and fairness penalties must survive the QUBO translation intact.
 

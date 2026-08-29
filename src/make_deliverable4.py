@@ -101,28 +101,28 @@ curve — would have looked far more impressive and would have been unsupported 
         sd = pd.read_csv(sens_csv)
         sm = json.loads(sens_meta_p.read_text())
         sens_tbl = md_table(
-            sd[["rho", "lgd_at_12pct_apr", "jaccard_mean", "jaccard_full_pipeline", "n_funded"]].rename(
-                columns={"rho": "rho = LGD/APR", "lgd_at_12pct_apr": "LGD at 12% APR",
+            sd[["rho", "lgd_at_base_apr", "jaccard_mean", "jaccard_full_pipeline", "n_funded"]].rename(
+                columns={"rho": "rho = LGD/APR", "lgd_at_base_apr": "LGD at base APR",
                          "jaccard_mean": "Same-pool overlap",
                          "jaccard_full_pipeline": "Full-pipeline overlap",
-                         "n_funded": "Loans funded"}),
-            {"rho = LGD/APR": "{:.1f}", "LGD at 12% APR": "{:.2f}",
+                         "n_funded": "Accounts funded"}),
+            {"rho = LGD/APR": "{:.2f}", "LGD at base APR": "{:.2f}",
              "Same-pool overlap": "{:.3f}", "Full-pipeline overlap": "{:.3f}",
-             "Loans funded": "{:.1f}"},
+             "Accounts funded": "{:.1f}"},
         )
-        sens_section = f"""German Credit contains no interest rate and no recovery rate, so the loan economics —
+        sens_section = f"""The dataset contains no interest rate and no recovery rate, so the loan economics —
 **{sm['base_apr']:.0%} APR** and **{sm['base_lgd']:.0%} loss-given-default** — are assumptions we
 chose, not measurements. Every expected-value coefficient, and therefore the QUBO's ground
 state, rests on them. That is a fair thing for a judge to attack, so we tested it.
 
 **First result: there is only one free parameter, not two.** Expanding the expected value,
 
-    EV_i = A_i · [ (1 − p_i)·APR·d_i/12 − p_i·LGD ]
-         = A_i · APR · [ (1 − p_i)·d_i/12 − p_i·(LGD/APR) ]
+    EV_i = A_i · [ (1 − p_i)·APR − p_i·LGD ]
+         = A_i · APR · [ (1 − p_i) − p_i·(LGD/APR) ]
 
 scaling APR and LGD together by any k > 0 scales every EV by k, and a knapsack's argmax is
 invariant under positive scaling. So the portfolio depends only on **ρ = LGD/APR**. Our
-baseline is simply one point on the line ρ = {sm['base_rho']:.0f}. We confirmed this
+baseline is simply one point on the line ρ = {sm['base_rho']:.2f}. We confirmed this
 empirically rather than trusting the algebra: {"identical portfolios across all 24 rescaling checks"
 if sm['scale_invariance_confirmed'] else "the check FAILED, see the CSV"}.
 
@@ -130,8 +130,8 @@ if sm['scale_invariance_confirmed'] else "the check FAILED, see the CSV"}.
 
 {sens_tbl}
 
-Holding the candidate pool fixed, a ±20% error in ρ leaves **{sm['mean_overlap_rho_4_to_6']:.0%}**
-of the portfolio unchanged, and even across a 5× range of ρ the overlap averages
+Holding the candidate pool fixed, a modest error in ρ leaves **{sm['mean_overlap_rho_4_to_6']:.0%}**
+of the portfolio unchanged, and across the full swept range of ρ the overlap averages
 **{sm['mean_overlap_off_baseline']:.0%}**. But run the *full* pipeline — where a different ρ also
 changes which applicants clear the positive-EV screen — and overlap collapses to
 **{sm['mean_overlap_full_pipeline']:.0%}**.
@@ -196,6 +196,25 @@ claims get into submissions.**"""
     else:
         cvar_section = ("_Not yet measured — run `python src/cvar_ablation.py` to populate "
                         "this section._")
+
+    # Derived, not asserted. An earlier revision hardcoded "logistic regression beats the
+    # gradient-boosted model" -- true at n=1000 on German Credit, false at n=21000 here.
+    n_train = ai.get("n_train", 0)
+    if ai["gbm_auc"] >= ai["logreg_auc"]:
+        model_verdict = (
+            f"Gradient boosting wins on both metrics ({ai['gbm_auc']:.3f} vs "
+            f"{ai['logreg_auc']:.3f} AUC, {ai['gbm_brier']:.3f} vs {ai['logreg_brier']:.3f} "
+            f"Brier). With {n_train:,} training rows that is the expected outcome — boosting "
+            f"needs data to beat a well-specified linear model. On the 1,000-row German Credit "
+            f"data we started from, the ordering was reversed, which is a large part of why "
+            f"we moved off it."
+        )
+    else:
+        model_verdict = (
+            f"Logistic regression **beats** the gradient-boosted model here "
+            f"({ai['logreg_auc']:.3f} vs {ai['gbm_auc']:.3f} AUC) — the expected result on a "
+            f"small sample, and we report it rather than burying it."
+        )
 
     exact_time = quality[quality.solver.str.startswith("Exact")]["seconds"].mean()
     qaoa = summary[summary.solver.str.startswith("QAOA")].sort_values("solver")
@@ -268,8 +287,8 @@ claims get into submissions.**"""
     )
     fair_tbl = md_table(
         fair_piv.rename(columns={"fairness_lambda": "Fairness weight", "profit": "Mean profit (DM)",
-                                 "parity_gap": "Approval-rate gap (F-M)", "n_funded": "Loans funded"}),
-        {"Mean profit (DM)": "{:,.0f}", "Approval-rate gap (F-M)": "{:+.1%}", "Loans funded": "{:.1f}"},
+                                 "parity_gap": "Approval-rate gap (F-M)", "n_funded": "Accounts funded"}),
+        {"Mean profit (DM)": "{:,.0f}", "Approval-rate gap (F-M)": "{:+.1%}", "Accounts funded": "{:.1f}"},
     )
 
     doc = f"""# Deliverable 4 — Where the quantum mapping helps, where it doesn't, and where it stops being simulable
@@ -359,56 +378,29 @@ lever that keeps the instance simulable, and it is a modelling decision, not a t
 
 ## C. Fairness and diversification as optimiser constraints, not footnotes
 
-The approval-rate parity penalty is a **squared linear term**, so it folds into the objective
-at **zero additional qubits** — and it is what makes the objective genuinely quadratic. A plain
-knapsack objective is linear; the parity penalty introduces real ZZ couplings between
-applicants of opposite groups.
+Both penalties are **squared linear terms**, so each folds into the objective at **zero
+additional qubits** — and together they are what make the objective genuinely quadratic. A plain
+knapsack objective is linear. Sector concentration couples applicants in the *same* sector;
+approval-rate parity couples applicants in *opposite* groups.
 
 {fair_tbl}
 
 This quantifies the price of parity in DM rather than asserting the model is fair.
 
-**Caveat we state rather than hide:** the protected attribute is derived from German Credit
-attribute 9, which encodes marital status and sex jointly; the reliability of that coding has
-been questioned in the literature. We use it to demonstrate the *mechanism* of a fairness-constrained
-allocator, not to make a claim about lending discrimination in this dataset.
+**Why sex is usable here, and was not before.** We built this on UCI Statlog (German Credit)
+first. Grömping (2019), *South German Credit Data: Correcting a Widely Used Data Set*
+(Report 4/2019, Beuth University of Applied Sciences Berlin), shows that dataset's published
+coding is wrong: male singles and female non-singles share code `A92`, and in the published
+file `A95` (female:single) has **zero rows** — so any "female" group is a mixed bag and a
+fairness number computed on it measures nothing. Most published fairness work on German Credit
+uses exactly that variable. This dataset codes sex unambiguously, which is one of the reasons
+we moved to it. `SEX` and the group label derived from it are excluded from the classifier's
+features, so the model cannot condition on sex directly.
 
----
-
-## D. The AI model — reported honestly
-
-| Model | ROC-AUC | Brier score |
-| --- | --- | --- |
-| Gradient boosting (calibrated) | {ai['gbm_auc']:.3f} | {ai['gbm_brier']:.3f} |
-| Logistic regression (tuned) | {ai['logreg_auc']:.3f} | {ai['logreg_brier']:.3f} |
-
-Logistic regression **beats** the gradient-boosted model on this dataset
-({ai['logreg_auc']:.3f} vs {ai['gbm_auc']:.3f} AUC). That is the expected result at n=1000 with
-30% base rate, and we report it rather than burying it. Calibration is the metric that matters
-downstream: the optimiser multiplies these probabilities by cash amounts, so a miscalibrated
-0.3 that should be 0.5 corrupts every coefficient of the Hamiltonian.
-
----
-
-## E. Bottom line
-
-Quantum **loses on speed by ~{speed_ratio:,.0f}×**. On quality it does not cleanly win either:
-pooled approximation ratio {pooled_ar:.4f} against the greedy heuristic's {greedy.ar_mean:.4f},
-though it reaches the exact optimum more often ({best_hit.hit_rate:.0%} at {best_hit.solver} vs
-{greedy.hit_rate:.0%}) at the cost of a worse tail. **We are reporting a negative result, and
-that is the point** — the measurement is trustworthy precisely because it did not come out the
-way we wanted. We are not claiming advantage at 14 qubits; published analysis puts the QAOA
-crossover for combinatorial problems at hundreds of qubits (Guerreschi & Matsuura,
-*Sci. Rep.* **9**, 6903 (2019), doi:10.1038/s41598-019-43176-9). What we demonstrate is
-a correct end-to-end mapping — calibrated ML output → QUBO → Ising Hamiltonian → variational
-circuit → measured portfolio — and an honest measurement of exactly where it stops working, which
-is what the "small qubit counts, simulator only" scope asks for.
-
-One thing QAOA gives that exact search structurally cannot: it returns a **distribution** over
-portfolios. Under default probabilities that are themselves estimates, a ranked set of
-near-optimal feasible portfolios is more useful than a single optimum computed for point
-estimates that are wrong.
-"""
+**And the base rate is real.** German Credit's 30% default rate is an artefact of a stratified
+sample with bad credits heavily oversampled (700 good / 300 bad by construction), which inflated
+every expected-value figure. Here the 22.1% rate is the observed rate in 30,000 accounts, so the
+money on this page is in realistic proportions."""
     (ROOT / "DELIVERABLE_4.md").write_text(doc, encoding="utf-8")
     print("wrote DELIVERABLE_4.md")
 

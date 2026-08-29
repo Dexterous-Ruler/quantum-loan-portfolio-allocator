@@ -7,7 +7,11 @@ depolarizing two-qubit gate error and watch the approximation ratio fall.
 Sized deliberately small. Noisy simulation is ~24x slower than noiseless (density-matrix
 style sampling rather than pure statevector), so this uses 12 qubits and p=1.
 
-    python src/noise_ablation.py        # ~17 minutes
+    python src/noise_ablation.py        # ~50 minutes
+
+Seed count is set from the measured noise floor: a 3-seed pilot could not separate the noise
+levels from seed-to-seed scatter and reported the sweep as inconclusive, with an estimate of
+~8 seeds per level needed. We run 12.
 """
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
 
 POOL_N = 8          # 12 qubits
 REPS = 1
-SEEDS = [0, 1, 2]
+SEEDS = list(range(12))
 # 2-qubit depolarizing error rates. Current superconducting devices sit around 5e-3 to 1e-2,
 # so this brackets the real hardware regime on both sides.
 ERROR_RATES = [None, 0.001, 0.005, 0.01, 0.02]

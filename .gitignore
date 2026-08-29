@@ -18,3 +18,5 @@ artifacts/tunnel_log.txt
 # node (deck generator)
 node_modules/
 package-lock.json
+artifacts/rerun_log.txt
+artifacts/cvar_log.txt
