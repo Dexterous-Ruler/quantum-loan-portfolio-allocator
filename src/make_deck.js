@@ -202,8 +202,8 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
   );
 
   const steps = [
-    ["German Credit", "1,000 real applicants\nUCI Statlog"],
-    ["Calibrated GBM", `P(default) per applicant\nAUC ${(+ai.gbm_auc).toFixed(3)}`],
+    ["Taiwan card data", "30,000 accounts\nUCI, 2005"],
+    ["Calibrated GBM", `P(default) per account\nAUC ${(+ai.gbm_auc).toFixed(3)}`],
     ["Expected value", "EV = P(repay)·interest\n− P(default)·LGD·principal"],
     ["QUBO", "max Σ EV·x − λ·gap(x)²\ns.t. Σ units·x ≤ budget"],
     ["QAOA", "Ising Hamiltonian\n14 qubits, measured"],
@@ -262,17 +262,17 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
   s.addText(
     [
       { text: "Capital budget → the funded loan book re-optimises live, qubit count updates with it.", options: { bullet: true, breakLine: true } },
-      { text: "Fairness weight → approval-rate gap closes from −42% to −2.9%, and we can price it.", options: { bullet: true, breakLine: true } },
+      { text: "Fairness weight → approval-rate gap closes from 0.28 to 0.03, and we can price it.", options: { bullet: true, breakLine: true } },
       { text: "Parity enters as a squared penalty on the objective: zero extra qubits, and it couples applicants of opposite groups in the Hamiltonian.", options: { bullet: true } },
     ],
     { x: 7.5, y: 2.2, w: 5.2, h: 1.9, isTextBox: true, margin: 0, fontFace: BODY, fontSize: 12, color: MUTED, paraSpaceAfter: 9 }
   );
-  stat(s, { x: 7.5, y: 4.2, w: 2.5, n: "−42% → −2.9%", label: "Approval-rate gap", nSize: 17 });
+  stat(s, { x: 7.5, y: 4.2, w: 2.5, n: "0.28 → 0.03", label: "Approval-rate gap", nSize: 20 });
   stat(s, { x: 10.2, y: 4.2, w: 2.5, n: "≈10%", label: "Of profit, the price of parity" });
 
   card(s, { x: 7.5, y: 5.62, w: 5.2, h: 0.95, fill: NAVY });
   s.addText(
-    "We do not claim the model is fair. We claim we can put parity in the objective and tell you what it costs in Deutschmarks.",
+    "We do not claim the model is fair. We claim we can put parity in the objective and tell you what it costs -- about 4% of profit.",
     { x: 7.74, y: 5.8, w: 4.75, h: 0.62, isTextBox: true, margin: 0, fontFace: BODY, fontSize: 11.5, italic: true, color: ICE }
   );
   s.addNotes("This is the money shot. Toggle diversification and fairness live and let the numbers move. If asked why age rather than sex: sex is not recoverable from this dataset -- male singles and female non-singles share code A92, and A95 has zero rows here. Groemping (2019) documents the coding errors.");
@@ -386,7 +386,7 @@ function stat(slide, { x, y, w, n, label, color, sub, nSize }) {
   });
 
   const items = [
-    ["Deliverable 1", "Calibrated GBM on 1,000 real applicants. Logistic regression beats it — we report that."],
+    ["Deliverable 1", "Calibrated GBM on 30,000 real accounts, AUC 0.78. Beats logistic regression here -- reversed on small data."],
     ["Deliverable 2", "One quantum module: QAOA on the portfolio QUBO. 14 qubits, simulator, no hardware queue."],
     ["Deliverable 3", "Streamlit demo the jury drives: budget and fairness sliders, live re-optimisation."],
     ["Deliverable 4", "One A4 page, every number generated from measured CSVs. Nothing typed by hand."],

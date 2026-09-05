@@ -20,3 +20,4 @@ node_modules/
 package-lock.json
 artifacts/rerun_log.txt
 artifacts/cvar_log.txt
+artifacts/lt_log.txt
