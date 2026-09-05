@@ -7,6 +7,57 @@
 
 ---
 
+## PART 0 — Problem & solution, in one page
+
+### The exact problem statement (technical)
+A lender must decide **which subset of loan applicants to fund** when its capital is smaller than
+the total it could lend. Each applicant *i* carries a default probability *pᵢ*, an interest gain
+if repaid, and a loss if they default. The lender wants to **maximise total risk-adjusted
+expected value** — `Σ EVᵢ·xᵢ` where `xᵢ ∈ {0,1}` means fund / don't-fund — **subject to a fixed
+capital budget** `Σ unitsᵢ·xᵢ ≤ B`, while also **controlling concentration risk** (too much capital
+in one customer segment) and **approval-rate disparity** between demographic groups. Formally this
+is a **0-1 knapsack with quadratic penalty terms** — NP-hard, natively binary, natively quadratic.
+
+### The same thing, in plain words
+A bank has 100 people it *could* lend to, but only enough money for, say, 40 of them. Some
+borrowers are safer bets than others, and some ask for bigger loans. **Which 40 should it pick to
+make the most money without betting too much on any one type of customer, and without unfairly
+rejecting one group?** Picking the best combination — not just ranking people — is a genuinely
+hard puzzle, and it's the kind of "best combination under a limit" puzzle a quantum computer is
+designed for.
+
+### Our solution (exact technical answer)
+A **hybrid AI→quantum pipeline that runs in series, not in parallel:**
+1. A **calibrated gradient-boosted classifier** (scikit-learn HistGBM + Platt) predicts *pᵢ* for
+   each of 30,000 real Taiwanese credit-card accounts (AUC 0.780, Brier 0.135).
+2. Each probability becomes an expected value `EVᵢ = (1−pᵢ)·interest − pᵢ·LGD·exposure`. **These
+   EVs are the linear coefficients of a QUBO.**
+3. The QUBO — objective plus a Herfindahl concentration penalty and an approval-rate parity
+   penalty, both squared-linear so they add **zero qubits** — is converted to an **Ising
+   Hamiltonian** (14 qubits, 105 Pauli terms, depth 78, 182 two-qubit gates).
+4. **QAOA** (Qiskit Aer simulator, COBYLA, 2,048 shots) searches for its ground state; the winning
+   bitstring is the set of applicants to fund.
+5. We benchmark QAOA against exhaustive search and a greedy heuristic on the **same QUBO**, and
+   report the result honestly: at 14 qubits classical wins (QAOA ~125× slower, approx-ratio 0.9789
+   vs greedy 0.9986). We demonstrate a correct end-to-end mapping and measure where it breaks.
+
+### Our solution, in plain words
+An AI model reads each customer's history and predicts how likely they are to default. Those
+predictions get turned into "expected profit per customer," which we hand to a quantum optimiser
+that picks the best group of customers to fund within the budget — while spreading the risk and
+keeping approvals fair. The AI and the quantum part are **linked in a chain**: the AI's answer
+*becomes* the quantum problem, so it's one real pipeline, not two things stuck side-by-side. We
+then checked it honestly against ordinary computers and reported that, at this small size, the
+ordinary computer still wins — which is the truthful result.
+
+### Summary (say this if you have 20 seconds)
+**We predict each borrower's risk with AI, turn that into a "fund-the-best-subset-under-a-budget"
+puzzle, and solve that puzzle with a quantum algorithm — a genuine AI-feeds-quantum pipeline. It
+works end-to-end, it's fair and diversified by construction, and we report honestly that classical
+still wins at 14 qubits, because a truthful result is the one that survives the judges' questions.**
+
+---
+
 ## PART 1 — The core story (memorise this)
 
 ### The 15-second version
