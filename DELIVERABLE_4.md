@@ -209,13 +209,13 @@ additional qubits** — and together they are what make the objective genuinely 
 knapsack objective is linear. Sector concentration couples applicants in the *same* sector;
 approval-rate parity couples applicants in *opposite* groups.
 
-| Fairness weight | Mean profit (DM) | Approval-rate gap (F-M) | Accounts funded |
+| Fairness weight | Mean profit (NT$) | Approval-rate gap (F-M) | Accounts funded |
 | --- | --- | --- | --- |
 | 0.0 | 33,195 | -20.6% | 2.8 |
 | 2000.0 | 33,195 | -20.6% | 2.8 |
 | 20000.0 | 32,685 | -7.6% | 2.6 |
 
-This quantifies the price of parity in DM rather than asserting the model is fair.
+This quantifies the price of parity in NT$ rather than asserting the model is fair.
 
 **Why sex is usable here, and was not before.** We built this on UCI Statlog (German Credit)
 first. Grömping (2019), *South German Credit Data: Correcting a Widely Used Data Set*

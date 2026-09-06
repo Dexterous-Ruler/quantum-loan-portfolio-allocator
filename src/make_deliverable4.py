@@ -293,9 +293,9 @@ claims get into submissions.**"""
         {"Statevector (MB)": "{:,.1f}", "QAOA p=1 (s)": "{:.1f}", "Exact (s)": "{:.4f}"},
     )
     fair_tbl = md_table(
-        fair_piv.rename(columns={"fairness_lambda": "Fairness weight", "profit": "Mean profit (DM)",
+        fair_piv.rename(columns={"fairness_lambda": "Fairness weight", "profit": "Mean profit (NT$)",
                                  "parity_gap": "Approval-rate gap (F-M)", "n_funded": "Accounts funded"}),
-        {"Mean profit (DM)": "{:,.0f}", "Approval-rate gap (F-M)": "{:+.1%}", "Accounts funded": "{:.1f}"},
+        {"Mean profit (NT$)": "{:,.0f}", "Approval-rate gap (F-M)": "{:+.1%}", "Accounts funded": "{:.1f}"},
     )
 
     doc = f"""# Deliverable 4 — Where the quantum mapping helps, where it doesn't, and where it stops being simulable
@@ -392,7 +392,7 @@ approval-rate parity couples applicants in *opposite* groups.
 
 {fair_tbl}
 
-This quantifies the price of parity in DM rather than asserting the model is fair.
+This quantifies the price of parity in NT$ rather than asserting the model is fair.
 
 **Why sex is usable here, and was not before.** We built this on UCI Statlog (German Credit)
 first. Grömping (2019), *South German Credit Data: Correcting a Widely Used Data Set*

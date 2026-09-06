@@ -114,7 +114,7 @@ def fig_fairness(n_seeds: int = 6) -> Path:
             ax.annotate(f"$\\lambda$={int(r.lam):,}", (r.gap * 100, r.profit),
                         textcoords="offset points", xytext=(8, 6), fontsize=8, color=INK)
     ax.set_xlabel("Approval-rate gap between groups (percentage points)")
-    ax.set_ylabel("Expected profit (DM)")
+    ax.set_ylabel("Expected profit (NT$)")
     ax.set_title("The price of parity\nEach point is an optimal portfolio at a different fairness weight",
                  fontsize=10, loc="left")
     _style(ax)

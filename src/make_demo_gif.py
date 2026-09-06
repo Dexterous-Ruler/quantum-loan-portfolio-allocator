@@ -72,7 +72,7 @@ def main() -> None:
         a1.set_xlim(0, max(units) * 1.25)
         a1.set_title(f"Funded (blue) vs declined (grey)\n"
                      f"{int(p.units @ x)} of {p.budget_units} units deployed  ·  "
-                     f"{profit:,.0f} DM",
+                     f"NT$ {profit:,.0f}",
                      fontsize=9.5, loc="left", color=INK)
         a1.grid(axis="x", alpha=0.25, linewidth=0.6)
         _bare(a1)
@@ -82,7 +82,7 @@ def main() -> None:
         a2.scatter([p.budget_units], [profit], s=170, color=ACC, zorder=5,
                    edgecolor="white", linewidth=1.8)
         a2.set_xlabel("Capital budget (units)")
-        a2.set_ylabel("Expected profit (DM)")
+        a2.set_ylabel("Expected profit (NT$)")
         a2.set_ylim(min(profits) * 0.92, max(profits) * 1.08)
         a2.set_title("Profit against budget\nDiminishing returns as capital grows",
                      fontsize=9.5, loc="left", color=INK)

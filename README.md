@@ -51,9 +51,15 @@ is no optimisation problem to solve.
 Both Deliverable-4 documents are **generated from the measured CSVs** — no number in either
 is typed by hand, so the page cannot drift from the experiment.
 
-Supporting material: [`PRESENTATION.pptx`](PRESENTATION.pptx) (7-slide deck, also generated
-from the artifacts) and [`PITCH.md`](PITCH.md) (3-minute demo script plus the questions a
-quantum-literate judge will ask, with answers).
+**Full project report:** [`REPORT.pdf`](REPORT.pdf) (19 pages — problem, data with sources,
+pipeline, every benchmark, the self-audit, both demos with screenshots, reproducibility, and a
+numbered reference list; rendered from [`REPORT.html`](REPORT.html) with headless Edge).
+
+Supporting material: [`PRESENTATION.pptx`](PRESENTATION.pptx) (8-slide deck, also generated
+from the artifacts), [`PITCH.md`](PITCH.md) (3-minute demo script plus the questions a
+quantum-literate judge will ask, with answers), [`JUDGE_DEFENSE.md`](JUDGE_DEFENSE.md),
+[`CONCEPTS_EXPLAINED.md`](CONCEPTS_EXPLAINED.md) and
+[`EXPLAINING_THE_GRAPHS.md`](EXPLAINING_THE_GRAPHS.md).
 
 ```bash
 node src/make_deck.js && python src/qa_deck.py
@@ -128,9 +134,10 @@ accounts at **zero extra qubits**.
 
 **Tested and rejected — CVaR aggregation.** Barkoutsos et al. (*Quantum* **4**, 256 (2020))
 report CVaR aggregation converging faster and better on every problem they tested, and it is
-what comparable repos use. We measured it over 24 runs per setting: the best α improved the
-approximation ratio by +0.0020 against a within-cell scatter of 0.0219 — roughly 4× smaller
-than its own noise floor. We kept the default. `src/cvar_ablation.py` has the numbers.
+what comparable repos use. We measured it over 64 runs per setting: the best α (0.1) improved the
+approximation ratio by +0.0138, but the spread between settings (0.0060) is roughly 4× smaller
+than the within-cell scatter (0.0258) — the effect is inside its own noise floor. We kept the
+default. `src/cvar_ablation.py` has the numbers.
 
 ## The two numbers we invented
 
@@ -138,9 +145,10 @@ The dataset has no interest rate and no recovery rate, so the 18% APR and 60% LG
 [`src/data.py`](src/data.py) are assumptions, not data. `src/sensitivity.py` tests what that
 costs. Two results: the portfolio depends **only on the ratio ρ = LGD/APR**, not on either
 number individually (a knapsack's argmax is invariant under positive scaling of the objective —
-verified empirically over 24 rescaling checks); and holding the pool fixed, a ±20% error in ρ
-leaves 88% of the portfolio unchanged. The *screening* step in front of the optimiser is far
-more sensitive than the allocation itself.
+verified empirically over 24 rescaling checks); and holding the pool fixed, a modest error in ρ
+leaves about 98% of the portfolio unchanged (97.5% measured near the baseline, 82% averaged over
+the whole sweep). The *screening* step in front of the optimiser is far more sensitive than the
+allocation itself: re-run the full pipeline with a different ρ and the overlap collapses to 0%.
 
 ## Hardware readiness
 

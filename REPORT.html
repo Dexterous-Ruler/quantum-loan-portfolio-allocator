@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quantum-Assisted Loan-Portfolio Allocator — Project Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600,0..100&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  @page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+  :root{
+    --ink:#17191C; --ink-2:#464B54; --ink-3:#7A8089; --line:#DDDCD5; --surface-2:#F4F3EF;
+    --gold:#C4841D; --gold-soft:#FBEFD3; --gold-line:#E4C98C; --teal:#0F7C8C; --teal-soft:#DDF0F2; --plum:#8B3A62; --red:#C8432E; --green:#2F9E5F;
+    --display:"Fraunces","Georgia","Times New Roman",serif; --body:"Instrument Sans","Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"DM Mono",Consolas,ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#fff;color:var(--ink);font:10pt/1.48 var(--body)}
+  h1,h2,h3,h4{font-family:var(--display);font-weight:500;letter-spacing:-.01em;color:var(--ink);text-wrap:balance;margin:0}
+  h1{font-size:26pt;line-height:1.1;font-variation-settings:"opsz" 144,"SOFT" 30}
+  h2{font-size:17pt;line-height:1.15;margin:0 0 6pt;padding-bottom:5pt;border-bottom:1.5pt solid var(--ink);break-after:avoid}
+  h2 .n{font-family:var(--mono);font-weight:500;font-size:10pt;color:var(--gold);margin-right:8pt;letter-spacing:.06em}
+  h3{font-size:12.5pt;margin:12pt 0 4pt;break-after:avoid}
+  h4{font-family:var(--body);font-weight:600;font-size:10.6pt;margin:8pt 0 2pt;break-after:avoid}
+  p{margin:0 0 6pt;max-width:none;orphans:3;widows:3}
+  section{break-before:auto;margin-top:18pt;padding-top:2pt}
+  section.pb{break-before:page;margin-top:0}
+  section.cont{margin-top:14pt}
+  ul,ol{margin:0 0 6pt;padding-left:16pt} li{margin-bottom:2.5pt}
+  b{font-weight:600}
+  .lead{font-size:11.6pt;color:var(--ink-2)}
+  .eyebrow{font:500 8.5pt var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6pt}
+  .q{color:var(--teal);font-weight:500}
+  .cite{font-family:var(--mono);font-size:8.6pt;color:var(--teal);vertical-align:super;line-height:0}
+  code,.mono{font-family:var(--mono);font-size:9.3pt}
+  code{background:var(--surface-2);padding:0 3pt;border-radius:3pt}
+  pre{font-family:var(--mono);font-size:8.8pt;line-height:1.45;background:var(--surface-2);border:1px solid var(--line);border-radius:6pt;padding:8pt 10pt;margin:4pt 0 8pt;white-space:pre-wrap;break-inside:avoid}
+  .eq{font-family:var(--mono);font-size:9.4pt;background:#fff;border-left:2.5pt solid var(--gold);padding:5pt 10pt;margin:4pt 0 8pt;break-inside:avoid;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:9.2pt;margin:4pt 0 8pt;break-inside:avoid}
+  th{font:600 8.3pt var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:4pt 6pt;border-bottom:1pt solid var(--ink)}
+  td{padding:3.5pt 6pt;border-bottom:.6pt solid var(--line);vertical-align:top}
+  td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  th.n{font-family:var(--body)}
+  tr.hl td{background:var(--gold-soft)}
+  .cap{font-size:8.8pt;color:var(--ink-3);margin:-3pt 0 8pt}
+  figure{margin:6pt 0 10pt;break-inside:avoid}
+  figure img{width:100%;display:block;border:1px solid var(--line);border-radius:4pt}
+  figcaption{font-size:8.8pt;color:var(--ink-2);margin-top:4pt;line-height:1.4}
+  figcaption b{color:var(--ink)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12pt}
+  .callout{background:var(--surface-2);border:1px solid var(--line);border-left:3pt solid var(--teal);border-radius:6pt;padding:8pt 11pt;margin:6pt 0 9pt;break-inside:avoid}
+  .callout.gold{border-left-color:var(--gold)}
+  .callout.red{border-left-color:var(--red)}
+  .callout p:last-child{margin-bottom:0}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8pt;margin:10pt 0 12pt}
+  .kpi{border:1px solid var(--line);border-radius:6pt;padding:7pt 10pt;background:var(--surface-2)}
+  .kpi .l{font:500 7.8pt var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .v{font:500 16pt/1.15 var(--display);font-variant-numeric:tabular-nums;margin-top:2pt}
+  .kpi.gold .v{color:var(--gold)} .kpi.teal .v{color:var(--teal)} .kpi.red .v{color:var(--red)}
+  .cover{break-before:auto;padding-top:26mm}
+  .cover .rule{height:2pt;background:var(--gold);width:64pt;margin:14pt 0}
+  .cover .meta{display:grid;grid-template-columns:auto 1fr;gap:4pt 18pt;font-size:10.2pt;margin-top:20pt}
+  .cover .meta .k{font:500 8.3pt var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding-top:2pt}
+  .cover .meta a{color:var(--teal);text-decoration:none;font-family:var(--mono);font-size:9.3pt}
+  .toc{margin-top:24pt;columns:2;column-gap:20pt;font-size:9.6pt}
+  .toc div{break-inside:avoid;display:flex;gap:8pt;padding:2pt 0;border-bottom:.5pt dotted var(--line)}
+  .toc .n{font-family:var(--mono);color:var(--gold);width:16pt;flex:none}
+  .refs{font-size:9.2pt;padding-left:0;list-style:none;counter-reset:r}
+  .refs li{counter-increment:r;display:grid;grid-template-columns:22pt 1fr;gap:6pt;margin-bottom:4.5pt;break-inside:avoid}
+  .refs li::before{content:"[" counter(r) "]";font-family:var(--mono);color:var(--teal);font-size:8.6pt;padding-top:1pt}
+  .refs a{color:var(--teal);text-decoration:none;word-break:break-all;font-family:var(--mono);font-size:8.4pt}
+  .gloss dt{font-weight:600;margin-top:5pt} .gloss dd{margin:0 0 2pt 0;color:var(--ink-2)}
+  .filetree td:first-child{font-family:var(--mono);font-size:8.6pt;width:40%;word-break:break-word}
+  .footer-note{font-size:8.6pt;color:var(--ink-3);margin-top:10pt;border-top:.6pt solid var(--line);padding-top:6pt}
+  .small{font-size:9.2pt;color:var(--ink-2)}
+  .pill{display:inline-block;font:500 7.8pt var(--body);letter-spacing:.06em;text-transform:uppercase;padding:1pt 6pt;border-radius:999pt;background:var(--teal-soft);color:var(--teal);margin-left:4pt;vertical-align:1pt}
+  .pill.gold{background:var(--gold-soft);color:var(--gold)} .pill.red{background:#FBE4E0;color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="eyebrow">IEEE Quantum AI Hackathon 2026 · Optimization / Finance track · Theme 25</div>
+  <h1>Quantum-Assisted Loan-Portfolio Allocator</h1>
+  <div class="rule"></div>
+  <p class="lead">An AI model prices the default risk of 30,000 real credit-card customers. Those calibrated probabilities become the coefficients of a QUBO, which becomes an Ising Hamiltonian, which QAOA solves to choose which borrowers a bank should fund under a fixed capital budget — with diversification and approval-rate fairness built into the objective. The classical-versus-quantum comparison was run honestly. Classical won at 14 qubits, and this report says so.</p>
+
+  <div class="meta">
+    <div class="k">Team</div><div>ASTITWA — Tanishq Aryan</div>
+    <div class="k">Theme</div><div>#25 Portfolio / resource allocation optimizer: <i>AI predicts returns from history → QAOA picks the best subset under a budget constraint → live demo: enter a budget, get the optimized selection</i> <span class="cite">[19]</span></div>
+    <div class="k">Repository</div><div><a href="https://github.com/Dexterous-Ruler/quantum-loan-portfolio-allocator">github.com/Dexterous-Ruler/quantum-loan-portfolio-allocator</a></div>
+    <div class="k">Dataset</div><div>UCI Default of Credit Card Clients (Taiwan, 2005; 30,000 accounts) <span class="cite">[1,2]</span></div>
+    <div class="k">Stack</div><div>Python 3.14 · Qiskit 2.5.2 · Qiskit Aer 0.17.2 · qiskit-optimization 0.7.0 · scikit-learn 1.9 · Streamlit 1.62 · React 18 + Three.js (web dashboard)</div>
+    <div class="k">Report date</div><div>6 September 2026 · repository at commit <span class="mono">9bdaff6</span></div>
+  </div>
+
+  <div class="kpis" style="margin-top:22pt">
+    <div class="kpi"><div class="l">Accounts scored</div><div class="v">30,000</div></div>
+    <div class="kpi teal"><div class="l">Qubits (demo instance)</div><div class="v">14</div></div>
+    <div class="kpi gold"><div class="l">QAOA approx. ratio</div><div class="v">0.979</div></div>
+    <div class="kpi red"><div class="l">vs. exact search</div><div class="v">~125× slower</div></div>
+  </div>
+
+  <div class="toc">
+    <div><span class="n">1</span>Executive summary</div>
+    <div><span class="n">2</span>Problem statement</div>
+    <div><span class="n">3</span>Data: source, structure, choices</div>
+    <div><span class="n">4</span>Method: the AI → quantum pipeline</div>
+    <div><span class="n">5</span>Results and benchmarks</div>
+    <div><span class="n">6</span>Self-audit: what we retracted</div>
+    <div><span class="n">7</span>The live demos and the dashboard</div>
+    <div><span class="n">8</span>Reproducibility and verification</div>
+    <div><span class="n">9</span>Limitations and future work</div>
+    <div><span class="n">10</span>References</div>
+    <div><span class="n">A</span>Glossary</div>
+    <div><span class="n">B</span>Repository index</div>
+  </div>
+</section>
+
+<!-- ============================ 1. EXECUTIVE SUMMARY ============================ -->
+<section class="pb">
+  <h2><span class="n">01</span>Executive summary</h2>
+  <p class="lead">Classical credit scoring answers <i>how risky is this customer</i>. It does not answer <i>which combination of customers should we fund when we cannot fund them all</i>. That second question is a 0-1 knapsack with quadratic side-terms — NP-hard, natively binary, natively quadratic — and it is exactly the shape of problem a quantum optimiser is built for. This project builds the full pipeline, measures it honestly, and reports what it found.</p>
+
+  <h3>What was built</h3>
+  <ul>
+    <li><b>Deliverable 1 — a working AI model.</b> A calibrated gradient-boosted classifier predicts default probability for real credit-card accounts (AUC 0.780, Brier 0.135 on a 9,000-row held-out test set). A tuned logistic-regression baseline is trained alongside it. <span class="cite">[10,11,12]</span></li>
+    <li><b>Deliverable 2 — one well-scoped quantum module.</b> The probabilities become expected values, the expected values become a QUBO, the QUBO becomes a 14-qubit Ising Hamiltonian, and QAOA on the Qiskit Aer simulator searches for its ground state. <span class="cite">[5,6,9,15]</span></li>
+    <li><b>Deliverable 3 — two live demos.</b> A Streamlit app (budget slider re-optimises the loan book live) and a deployable React + Three.js dashboard in which every borrower is a 3D figure, the optimiser's decision is acted out on a stage, and every possible portfolio is drawn as an energy landscape.</li>
+    <li><b>Deliverable 4 — a one-page comparison</b>, generated from the measured CSVs so no number is typed by hand, plus this long-form report.</li>
+  </ul>
+
+  <h3>What was found</h3>
+  <table>
+    <tr><th>Question</th><th>Answer</th><th class="n">Number</th></tr>
+    <tr><td>Does the mapping work end to end?</td><td>Yes. QAOA reaches the exact optimum on 56% of runs and averages a 0.979 approximation ratio.</td><td class="n">0.9789</td></tr>
+    <tr><td>Does quantum beat classical at this size?</td><td>No. Exhaustive search is about 125× faster and exact; a greedy heuristic is faster still and scores 0.9986.</td><td class="n">7.5 s vs 0.06 s</td></tr>
+    <tr><td>Which QAOA depth is best?</td><td>Cannot be told at this scale. Within-cell scatter (0.021) is six times the between-depth spread (0.0036).</td><td class="n">0.0211 / 0.0036</td></tr>
+    <tr><td>Would it survive hardware noise?</td><td>Inconclusive. The sweep's within-level scatter exceeds its trend; resolving it needs ~104 seeds per level.</td><td class="n">0.1365 / 0.0268</td></tr>
+    <tr><td>Is the allocation robust to the pricing assumptions?</td><td>Allocation yes (97.5% overlap near baseline); the positive-EV screening in front of it is not (0% full-pipeline overlap).</td><td class="n">97.5% / 0%</td></tr>
+    <tr><td>What does fairness cost?</td><td>Priced, not asserted: closing the approval gap from +31% to +9% costs 6.8% of expected profit on the frontier instance.</td><td class="n">NT$ 2,437</td></tr>
+  </table>
+
+  <div class="callout gold">
+    <p><b>The positioning in one sentence.</b> We demonstrate a correct, tested AI→quantum mapping for a real lending decision, and we measure exactly where it stands today: competitive on quality, hopeless on speed at 14 qubits, with the published crossover for QAOA sitting at hundreds of qubits <span class="cite">[8]</span>. A fabricated quantum win is the thing that does not survive a judge's first question.</p>
+  </div>
+
+  <h3>What makes it different from the usual hybrid submission</h3>
+  <p>Most hybrid hackathon projects run the AI and the quantum part <b>in parallel</b>: train a classifier, then train a quantum classifier on the same task, then compare two demos bolted together. Here they run <b>in series</b>. The classifier's output literally parameterises the cost Hamiltonian. Remove the AI and there is no optimisation problem left to solve.</p>
+  <pre>30,000 Taiwanese credit-card accounts
+      ↓
+calibrated GBM  →  P(default) per customer
+      ↓
+EV = P(repay)·interest − P(default)·LGD·exposure       ← ML output becomes objective coefficients
+      ↓
+QUBO:  max Σ EV·x − γ·concentration(x) − λ·parity_gap(x)²     s.t.  Σ units·x ≤ budget
+      ↓
+Ising Hamiltonian  →  QAOA ansatz  →  measured portfolio</pre>
+</section>
+
+<!-- ============================ 2. PROBLEM STATEMENT ============================ -->
+<section>
+  <h2><span class="n">02</span>Problem statement</h2>
+  <h3>The hackathon brief</h3>
+  <p>Theme 25 of the IEEE Quantum AI Hackathon 2026, Optimization / Finance track, reads: <i>"Portfolio / resource allocation optimizer — AI predicts returns from history → QAOA picks the best subset under a budget constraint → live demo: enter a budget, get the optimized selection."</i> <span class="cite">[19]</span> The brief asks for four deliverables: a working AI model, a single well-scoped quantum component on a simulator, a live demo, and a one-page comparison of where the quantum mapping helps and where it does not.</p>
+
+  <h3>The exact problem (technical)</h3>
+  <p>A lender must decide which subset of loan applicants to fund when its capital is smaller than the total it could lend. Each applicant <i>i</i> carries a default probability <i>p<sub>i</sub></i>, an interest gain if repaid, and a loss if they default. The lender maximises total risk-adjusted expected value subject to a fixed capital budget, while controlling concentration risk (too much capital in one customer segment) and approval-rate disparity between demographic groups.</p>
+  <div class="eq">maximise   Σ<sub>i</sub> EV<sub>i</sub>·x<sub>i</sub>  −  γ·H(x)  −  λ·G(x)²<br>
+subject to   Σ<sub>i</sub> u<sub>i</sub>·x<sub>i</sub> ≤ B,     x<sub>i</sub> ∈ {0, 1}<br><br>
+EV<sub>i</sub> = (1 − p<sub>i</sub>)·APR·A<sub>i</sub> − p<sub>i</sub>·LGD·A<sub>i</sub>          expected value of funding applicant i (exposure A<sub>i</sub>)<br>
+H(x)  = Σ<sub>s</sub> ( Σ<sub>i∈s</sub> u<sub>i</sub>x<sub>i</sub> / Σ<sub>i</sub> u<sub>i</sub>x<sub>i</sub> )²             Herfindahl concentration of capital across segments s<br>
+G(x)  = approval rate of group F  −  approval rate of group M          parity gap</div>
+  <p>Formally this is a <b>0-1 knapsack with quadratic penalty terms</b> <span class="cite">[14]</span>. It is NP-hard, the decision variables are natively binary, and the penalties make the objective natively quadratic — the three properties that make a problem a candidate for QUBO/Ising formulation <span class="cite">[6,15]</span>.</p>
+
+  <h3>The same thing in plain words</h3>
+  <p>A bank has a hundred people it <i>could</i> lend to but only enough money for, say, forty. Some borrowers are safer bets than others, and some ask for bigger loans. Which forty should it pick to make the most money without betting too much on one type of customer, and without unfairly turning away one group? Picking the best <i>combination</i> — not just ranking people — is a genuinely hard puzzle: every extra customer doubles the number of possible books. With ten customers there are 1,024 books; with three hundred there are more than there are atoms in the Earth.</p>
+
+  <h3>Why this is a quantum problem and not a "quantum-flavoured" one</h3>
+  <p>Subset selection under a budget maps to an Ising Hamiltonian whose ground state <i>is</i> the answer. That is categorically different from running a quantum kernel on four PCA components, where the kernel is a similarity function nobody can motivate. The quantum component here has a job a classical solver also does, which is precisely what allows an honest comparison.</p>
+
+  <h3>Scope decisions</h3>
+  <ul>
+    <li><b>One quantum module, not two.</b> The brief says "a single, well-scoped quantum component" and its Feasibility criterion rewards scoping. A second quantum component would cost points, not earn them.</li>
+    <li><b>Simulator only.</b> The brief scopes the work to a simulator. Hardware readiness is addressed by a noise sweep (§5.4), not by a hardware run.</li>
+    <li><b>Capital in coarse units.</b> Capital is discretised into units of NT$ 20,000 (maximum 6 per applicant). This is the single modelling decision that keeps the instance simulable — see §4.3 on why the budget, not the customer count, drives the qubit count.</li>
+  </ul>
+</section>
+
+<!-- ============================ 3. DATA ============================ -->
+<section>
+  <h2><span class="n">03</span>Data: source, structure and modelling choices</h2>
+  <h3>Source and citation</h3>
+  <p>The dataset is <b>Default of Credit Card Clients</b>, UCI Machine Learning Repository dataset 350, donated by I-Cheng Yeh and first described in Yeh &amp; Lien (2009) <span class="cite">[1,2]</span>. It holds 30,000 credit-card accounts from a Taiwanese bank, observed April–September 2005, with 23 predictors and a binary label for default on the next month's payment. It is released under the Creative Commons Attribution 4.0 licence. The loader in <code>src/data.py</code> downloads the official archive from the UCI URL on first run, so the repository does not redistribute the data.</p>
+  <table>
+    <tr><th>Property</th><th>Value</th><th>Used for</th></tr>
+    <tr><td>Rows</td><td class="n">30,000</td><td>21,000 train / 9,000 held-out test (stratified)</td></tr>
+    <tr><td>Default rate</td><td class="n">22.12%</td><td>Real observed base rate — not a stratified over-sample</td></tr>
+    <tr><td><code>LIMIT_BAL</code></td><td>Credit limit, NT$</td><td>Upper bound on exposure</td></tr>
+    <tr><td><code>BILL_AMT1</code></td><td>Latest statement balance</td><td>Exposure at default, clipped to [0, limit]</td></tr>
+    <tr><td><code>PAY_0…PAY_6</code>, <code>BILL_AMT*</code>, <code>PAY_AMT*</code></td><td>Six months of repayment history</td><td>Classifier features</td></tr>
+    <tr><td><code>AGE</code>, <code>MARRIAGE</code></td><td>Demographics</td><td>Classifier features</td></tr>
+    <tr><td><code>EDUCATION</code></td><td>1 graduate · 2 university · 3 high school · other</td><td>Customer <b>segment</b> for the concentration term</td></tr>
+    <tr><td><code>SEX</code></td><td>1 male · 2 female, unambiguous</td><td>Protected <b>group</b> for the parity term — <b>excluded from the classifier's features</b></td></tr>
+  </table>
+
+  <h3>Why this dataset, and why the project moved off German Credit</h3>
+  <p>The project started on UCI Statlog (German Credit) <span class="cite">[4]</span>, the standard credit-scoring benchmark, and moved off it deliberately.</p>
+  <table>
+    <tr><th></th><th>German Credit</th><th>This dataset</th></tr>
+    <tr><td>Rows</td><td class="n">1,000</td><td class="n">30,000</td></tr>
+    <tr><td>Vintage</td><td>1973–75 West Germany</td><td>2005 Taiwan</td></tr>
+    <tr><td>Default rate</td><td>30% — a stratified over-sample, 700 good / 300 bad by construction</td><td>22.1%, observed</td></tr>
+    <tr><td>Protected attribute</td><td>Sex <b>not recoverable</b> from the published coding</td><td>Sex coded unambiguously</td></tr>
+  </table>
+  <p>The last row decided it. Grömping (2019) <span class="cite">[3]</span> shows that German Credit's published coding is wrong: male singles and female non-singles share code <code>A92</code>, and in the published file code <code>A95</code> (female : single) has zero rows. Any "female" group built from it is a mixed bag, so a fairness number computed on it measures nothing — and most published fairness work on that dataset uses exactly that variable. The over-sampled base rate also inflated every expected-value figure, so the money was never in realistic proportions.</p>
+
+  <h3>Why Taiwan rather than India</h3>
+  <p>The team is presenting in India, and the question is fair. There is no public Indian retail-lending dataset that combines real default outcomes, a row-level exposure, an unambiguous protected attribute and tens of thousands of rows under an open licence; the Indian datasets commonly found on data-sharing sites are either synthetic or unlabelled. The pipeline is loader-agnostic — every downstream stage consumes a scored table with <code>default</code>, <code>group</code>, <code>sector</code> and an exposure column — so an Indian lender's own book would drop in by replacing one function in <code>src/data.py</code>. The fairness term demonstrates a <i>mechanism</i>; it is not a finding about lending discrimination in Taiwan in 2005.</p>
+
+  <h3>Modelling choices the data forces</h3>
+  <ul>
+    <li><b>Exposure = outstanding balance, not the limit.</b> This is revolving credit. Exposure at default is the latest statement balance clipped to [0, limit]; using the limit would overstate every position by roughly an order of magnitude.</li>
+    <li><b>Two invented numbers.</b> The data contains no interest rate and no recovery rate, so <b>APR = 18%</b> and <b>loss-given-default = 60%</b> are assumptions. §5.5 shows that only their ratio ρ = LGD/APR matters and measures how sensitive the answer is to it.</li>
+    <li><b>Segment is a proxy.</b> Education band stands in for an industry sector in the concentration term. It is the closest thing in the data to a segment whose members default together.</li>
+    <li><b>The model cannot see sex.</b> <code>SEX</code> and the derived group label are dropped from the feature matrix, so the classifier cannot condition on sex directly. Proxy effects through other columns are possible and are not claimed to be absent.</li>
+  </ul>
+</section>
+
+<!-- ============================ 4. METHOD ============================ -->
+<section>
+  <h2><span class="n">04</span>Method: the AI → quantum pipeline</h2>
+
+  <h3>4.1 Stage one — pricing the risk (Deliverable 1)</h3>
+  <p>The classifier is scikit-learn's <code>HistGradientBoostingClassifier</code> wrapped in <code>CalibratedClassifierCV</code> with sigmoid (Platt) calibration over five folds <span class="cite">[10,11]</span>. A tuned logistic regression is trained as the baseline. The split is 21,000 / 9,000, stratified on the label. Only test-set rows are ever scored for the optimiser, so no applicant the optimiser sees was used to train the model that priced them.</p>
+  <p><b>Why calibration matters more than accuracy here.</b> The optimiser multiplies each probability by money. A model that ranks well but says 0.30 when the truth is 0.50 corrupts every coefficient in the Hamiltonian. The Brier score <span class="cite">[12]</span> and the reliability curve (§5.7) are therefore the metrics that matter, and AUC is reported for completeness.</p>
+  <table>
+    <tr><th>Model</th><th class="n">AUC</th><th class="n">Brier score</th><th>Note</th></tr>
+    <tr class="hl"><td>Calibrated gradient boosting (used)</td><td class="n">0.780</td><td class="n">0.135</td><td>HistGBM + 5-fold sigmoid calibration</td></tr>
+    <tr><td>Logistic regression (baseline)</td><td class="n">0.715</td><td class="n">0.146</td><td>Standardised numeric features, tuned C</td></tr>
+    <tr><td>Base rate</td><td class="n">—</td><td class="n">0.172</td><td>Brier of always predicting 22.1%</td></tr>
+  </table>
+  <p class="small">An AUC of 0.78 is normal for retail credit risk; human repayment is genuinely noisy. Boosting beats logistic regression here because it has 21,000 rows to learn from — on the 1,000-row German Credit data the ordering was reversed, which is itself an argument for the larger dataset.</p>
+
+  <h3>4.2 Stage two — turning probabilities into money</h3>
+  <div class="eq">EV<sub>i</sub> = A<sub>i</sub> · [ (1 − p<sub>i</sub>)·APR − p<sub>i</sub>·LGD ]  =  A<sub>i</sub>·APR · [ (1 − p<sub>i</sub>) − p<sub>i</sub>·ρ ],   ρ = LGD / APR</div>
+  <p>Scaling APR and LGD together by any positive constant scales every EV by that constant, and a knapsack's argmax is invariant under positive scaling of its objective. So the portfolio depends on <b>one</b> free parameter, ρ, not two. The baseline is one point on that line, ρ = 3.33. This was confirmed empirically over 24 rescaling checks, not just by the algebra. Applicants with EV ≤ 0 are screened out before optimisation; a pool of <i>n</i> positive-EV applicants is then sampled for each instance and each is assigned a capital demand <i>u<sub>i</sub></i> in units of NT$ 20,000, capped at 6.</p>
+
+  <h3>4.3 Stage three — the QUBO and why the budget is the qubit bottleneck</h3>
+  <p><code>src/portfolio.py</code> expands the two penalties algebraically. Both are <b>squared linear forms</b>, so each folds into the objective at <b>zero additional qubits</b> — and together they are what makes the objective genuinely quadratic. A plain knapsack objective is linear and would produce no two-qubit couplings at all.</p>
+  <ul>
+    <li><b>Concentration</b> couples applicants in the <i>same</i> segment: funding two university customers together raises H(x) and costs γ.</li>
+    <li><b>Parity</b> couples applicants in <i>opposite</i> groups: the squared gap produces cross-terms between a woman and a man.</li>
+  </ul>
+  <p>The capital constraint is an <i>inequality</i>. <code>QuadraticProgramToQubo</code> converts it to an equality by introducing an integer slack variable, then binary-expands the slack — costing <code>ceil(log2(B + 1))</code> extra qubits. Hence:</p>
+  <div class="eq">qubits = n + ceil(log<sub>2</sub>(B + 1))       →   10 applicants + budget of 14 units = 10 + 4 = <b>14 qubits</b></div>
+  <p>Every doubling of the budget range costs another qubit. Discretising capital into coarse units is the lever that keeps the instance simulable, and it is a modelling decision, not a tuning knob. For the demo instance the resulting Hamiltonian has <b>105 Pauli terms</b>; the p = 1 QAOA circuit has <b>depth 78</b> and <b>182 two-qubit gates</b> after transpilation.</p>
+
+  <h3>4.4 Stage four — QAOA (Deliverable 2)</h3>
+  <p>The QUBO becomes an Ising Hamiltonian by the substitution x = (1 − Z)/2 <span class="cite">[6,15]</span>. QAOA <span class="cite">[5]</span> prepares |+⟩<sup>⊗n</sup> and alternates <i>p</i> layers of a cost unitary e<sup>−iγH<sub>C</sub></sup> and a mixer e<sup>−iβΣX</sup>; the 2<i>p</i> angles are tuned by a classical optimiser (COBYLA <span class="cite">[16]</span>, 200 iterations) to minimise the sampled energy, and the lowest-energy feasible bitstring among 2,048 shots is returned as the portfolio. Implementation: Qiskit 2.5.2, Qiskit Aer 0.17.2 (statevector backend with shot sampling through <code>SamplerV2</code> and a preset pass manager), and <code>MinimumEigenOptimizer</code> from qiskit-optimization 0.7.0 <span class="cite">[9]</span>. Sampling is used rather than exact expectation on purpose: measurement is part of the concept being demonstrated, and it yields a ranked distribution of near-optimal portfolios — something a single MILP optimum structurally cannot provide.</p>
+
+  <h3>4.5 Ground truth and the classical baselines</h3>
+  <table>
+    <tr><th>Solver</th><th>What it does</th><th>Role</th></tr>
+    <tr><td>Brute force</td><td>Enumerates all 2<sup>n</sup> portfolios, evaluates the objective, keeps the best feasible</td><td>Ground truth for the approximation ratio</td></tr>
+    <tr><td>NumPy eigensolver</td><td>Exact diagonalisation of the Ising Hamiltonian</td><td>Independent check that the QUBO encodes the same problem</td></tr>
+    <tr><td>Greedy</td><td>Fund by expected value per unit of capital until the budget is spent</td><td>The heuristic a bank would actually deploy — the baseline that matters</td></tr>
+    <tr><td>QAOA p = 1, 2, 3</td><td>As above</td><td>The quantum module under test</td></tr>
+  </table>
+  <p>All four attack <b>the same QUBO on the same instances</b>. This compares optimisers, not two different classifiers.</p>
+
+  <h3>4.6 How correctness is enforced</h3>
+  <p>Twenty-two automated tests run in CI. The load-bearing one, <code>test_bruteforce_matches_qubo_diagonalisation</code>, asserts that exhaustive enumeration and exact diagonalisation of the QUBO agree on every instance — if the converter's penalty weights were wrong, they would not, and every downstream number would be meaningless. Others pin the qubit-count formula, the scale invariance of §4.2, and that the penalised QUBO still matches brute force. One of them caught a real bug during development: the group label was changed in the parity metric but not in the QUBO builder, which silently made the fairness term constant. The fix introduced a single source of truth (<code>PortfolioProblem.group_mask</code>) that both consume.</p>
+</section>
+
+<!-- ============================ 5. RESULTS ============================ -->
+<section class="pb">
+  <h2><span class="n">05</span>Results and benchmarks</h2>
+  <p class="small">Setup for §5.1–5.2: 8 independent instances × QAOA depths {1, 2, 3} × 3 QAOA seeds per cell, 2,048 shots, COBYLA maxiter 200, Qiskit Aer statevector simulator, 14 qubits (10 decision + 4 slack). Every table on these pages is generated from the CSVs in <code>artifacts/</code>.</p>
+
+  <h3>5.1 Solution quality</h3>
+  <table>
+    <tr><th>Solver</th><th class="n">Approx. ratio (mean)</th><th class="n">Worst</th><th class="n">Std dev</th><th class="n">Hit exact optimum</th><th class="n">Wall clock (s)</th></tr>
+    <tr><td>QAOA p = 1</td><td class="n">0.9771</td><td class="n">0.9083</td><td class="n">0.0317</td><td class="n">50%</td><td class="n">5.2</td></tr>
+    <tr><td>QAOA p = 2</td><td class="n">0.9830</td><td class="n">0.9172</td><td class="n">0.0289</td><td class="n">67%</td><td class="n">7.1</td></tr>
+    <tr><td>QAOA p = 3</td><td class="n">0.9764</td><td class="n">0.9083</td><td class="n">0.0319</td><td class="n">50%</td><td class="n">10.1</td></tr>
+    <tr class="hl"><td>Greedy (value / capital)</td><td class="n">0.9986</td><td class="n">0.9889</td><td class="n">0.0039</td><td class="n">88%</td><td class="n">0.0002</td></tr>
+    <tr><td>Exact (brute force)</td><td class="n">1.0000</td><td class="n">1.0000</td><td class="n">—</td><td class="n">100%</td><td class="n">0.0599</td></tr>
+  </table>
+  <figure><img src="artifacts/figures/quality.png" alt="Approximation ratio of every QAOA run by circuit depth"><figcaption><b>Figure 1 — Every QAOA run, by circuit depth.</b> Each dot is one run; the bar is the mean per depth; the dashed line is the greedy heuristic and the dotted line the exact optimum. The scatter <i>within</i> a depth is visibly larger than the difference <i>between</i> depths.</figcaption></figure>
+  <ol>
+    <li><b>QAOA is competitive on quality and hopeless on speed.</b> Pooled across depths it averages 0.9789, hits the exact optimum on 56% of runs, and takes 7.5 s against 0.0599 s for exhaustive search — roughly 125× slower. There is no honest speed claim to make at 14 qubits.</li>
+    <li><b>The heuristic a bank would deploy wins.</b> Greedy averages 0.9986 at 0.0002 s. On this problem, at this scale, it is simply the better tool.</li>
+    <li><b>No depth is meaningfully best.</b> The spread within a single (instance, depth) cell across QAOA seeds is <b>0.0211</b>; the spread between the depth means is <b>0.0036</b>. An earlier single-seed run of this benchmark ranked p = 2 clearly best; re-running with different transpilation ranked it worst. Same code, same instances. Depth ranking at this scale is optimiser-seed luck, and any single-seed table that names a best depth is reporting noise.</li>
+    <li><b>Depth is still not free.</b> Runtime grows with p regardless of quality, because the fixed COBYLA budget must cover 2p parameters. The binding constraint is the classical optimisation landscape, not the circuit.</li>
+  </ol>
+
+  <h3>5.2 The scaling wall, measured on this laptop</h3>
+  <div class="two">
+    <div>
+      <table>
+        <tr><th class="n">Applicants</th><th class="n">Qubits</th><th class="n">Statevector (MB)</th><th class="n">QAOA p=1 (s)</th><th class="n">Exact (s)</th></tr>
+        <tr><td class="n">6</td><td class="n">10</td><td class="n">0.02</td><td class="n">1.9</td><td class="n">0.004</td></tr>
+        <tr><td class="n">8</td><td class="n">12</td><td class="n">0.07</td><td class="n">3.7</td><td class="n">0.014</td></tr>
+        <tr><td class="n">10</td><td class="n">14</td><td class="n">0.26</td><td class="n">4.6</td><td class="n">0.059</td></tr>
+        <tr><td class="n">12</td><td class="n">16</td><td class="n">1.05</td><td class="n">7.2</td><td class="n">0.252</td></tr>
+        <tr><td class="n"><i>extrap.</i></td><td class="n">28</td><td class="n">4,295</td><td class="n">—</td><td class="n">—</td></tr>
+        <tr><td class="n"><i>extrap.</i></td><td class="n">30</td><td class="n">17,180</td><td class="n">—</td><td class="n">—</td></tr>
+      </table>
+      <p class="small">Statevector memory is 2<sup>n</sup> × 16 bytes. Thirty qubits needs 17 GB, more than a 16 GB laptop has. Classical exact search is two to three orders of magnitude faster at every simulable size; the published crossover for QAOA advantage is at hundreds of qubits <span class="cite">[8]</span>.</p>
+    </div>
+    <figure><img src="artifacts/figures/scaling.png" alt="Wall-clock time versus qubit count"><figcaption><b>Figure 2 — Wall clock vs. qubits</b>, log scale. Both curves grow; the gap does not close.</figcaption></figure>
+  </div>
+</section>
+
+<section class="cont">
+  <h3>5.3 CVaR aggregation — tested and not adopted</h3>
+  <p>Barkoutsos et al. <span class="cite">[7]</span> report that aggregating QAOA samples by the Conditional Value-at-Risk of the best α-fraction, instead of by their mean, converges faster and better on every combinatorial problem they tested, and it is what the strongest comparable repositories use. It is a one-parameter change in Qiskit. It was measured over 64 runs per setting (8 instances × 8 repeats).</p>
+  <table>
+    <tr><th>Aggregation</th><th class="n">AR mean</th><th class="n">AR worst</th><th class="n">Std</th><th class="n">Hit optimum</th><th class="n">Seconds</th></tr>
+    <tr><td>CVaR α = 0.10</td><td class="n">0.9894</td><td class="n">0.8522</td><td class="n">0.0260</td><td class="n">78%</td><td class="n">4.5</td></tr>
+    <tr><td>CVaR α = 0.25</td><td class="n">0.9831</td><td class="n">0.9140</td><td class="n">0.0274</td><td class="n">70%</td><td class="n">4.4</td></tr>
+    <tr><td>CVaR α = 0.50</td><td class="n">0.9788</td><td class="n">0.9001</td><td class="n">0.0327</td><td class="n">58%</td><td class="n">4.3</td></tr>
+    <tr class="hl"><td>Mean (default, kept)</td><td class="n">0.9756</td><td class="n">0.8132</td><td class="n">0.0384</td><td class="n">58%</td><td class="n">4.4</td></tr>
+  </table>
+  <p>The best setting improves the mean approximation ratio by +0.0138, but the spread between settings is 0.0060 against a within-cell scatter of 0.0258 — the effect is about 4× smaller than its own noise floor, so the default was kept. This is not a contradiction of the paper: CVaR's advantage is largest on noisy hardware and on hard-to-optimise landscapes, and at 14 noise-free qubits the default already reaches the optimum 58% of the time, leaving little to recover. It is reported because adopting a technique on the strength of its citation, without checking it helps on one's own problem, is how unverified claims get into submissions.</p>
+
+  <h3>5.4 Hardware readiness — a sweep that is inconclusive, and why that is the result</h3>
+  <p>A depolarizing two-qubit gate error was swept at 8 applicants, p = 1, 12 instances per level.</p>
+  <div class="two">
+    <div>
+      <table>
+        <tr><th class="n">2q gate error</th><th class="n">AR, best of 2,048 shots</th><th class="n">AR, sampled distribution</th><th class="n">P(feasible)</th><th class="n">s</th></tr>
+        <tr><td class="n">0.000</td><td class="n">0.9351</td><td class="n">0.3172</td><td class="n">0.616</td><td class="n">3.1</td></tr>
+        <tr><td class="n">0.001</td><td class="n">1.0000</td><td class="n">0.3200</td><td class="n">0.629</td><td class="n">65.4</td></tr>
+        <tr><td class="n">0.005</td><td class="n">0.9601</td><td class="n">0.3683</td><td class="n">0.605</td><td class="n">68.7</td></tr>
+        <tr><td class="n">0.010</td><td class="n">0.9762</td><td class="n">0.3656</td><td class="n">0.591</td><td class="n">64.8</td></tr>
+        <tr><td class="n">0.020</td><td class="n">0.9188</td><td class="n">0.3683</td><td class="n">0.547</td><td class="n">62.9</td></tr>
+      </table>
+    </div>
+    <figure><img src="artifacts/figures/noise.png" alt="Approximation ratio versus two-qubit gate error"><figcaption><b>Figure 3 — Noise sweep</b> with every individual run plotted behind the means. The scatter beats the trend.</figcaption></figure>
+  </div>
+  <p>Within-level scatter across seeds is <b>0.1365</b>; the spread between error levels is <b>0.0268</b>. The putative trend is about 5× smaller than its noise floor, so there is no degradation curve here the data entitles anyone to draw. Resolving it would take roughly <b>104 seeds per level, about 7.7 hours</b> of noisy simulation.</p>
+  <div class="callout red">
+    <p><b>The power calculation was itself under-powered.</b> A 3-seed pilot was also inconclusive but estimated that ~8 seeds would settle it, so 12 were run. With 12 seeds the measured scatter came out ~2.5× larger than the pilot's estimate, and the requirement moved from ~8 seeds to ~104. The pilot had not merely failed to resolve the trend; it had underestimated its own error bars. Five means printed as a tidy descending curve would have looked far more impressive and would have been unsupported by the data.</p>
+  </div>
+
+  <h3>5.5 Sensitivity to the two invented numbers</h3>
+  <table>
+    <tr><th class="n">ρ = LGD / APR</th><th class="n">LGD at 18% APR</th><th class="n">Same-pool overlap</th><th class="n">Full-pipeline overlap</th><th class="n">Accounts funded</th></tr>
+    <tr><td class="n">1.50</td><td class="n">0.27</td><td class="n">0.581</td><td class="n">0.000</td><td class="n">2.9</td></tr>
+    <tr><td class="n">2.00</td><td class="n">0.36</td><td class="n">0.775</td><td class="n">0.000</td><td class="n">3.1</td></tr>
+    <tr><td class="n">2.50</td><td class="n">0.45</td><td class="n">0.850</td><td class="n">0.000</td><td class="n">3.1</td></tr>
+    <tr class="hl"><td class="n">3.33 (baseline)</td><td class="n">0.60</td><td class="n">1.000</td><td class="n">1.000</td><td class="n">3.1</td></tr>
+    <tr><td class="n">4.00</td><td class="n">0.72</td><td class="n">1.000</td><td class="n">0.000</td><td class="n">3.2</td></tr>
+    <tr><td class="n">5.00</td><td class="n">0.90</td><td class="n">0.950</td><td class="n">0.000</td><td class="n">3.8</td></tr>
+    <tr><td class="n">7.00</td><td class="n">1.26</td><td class="n">0.750</td><td class="n">0.000</td><td class="n">3.9</td></tr>
+  </table>
+  <p>Holding the candidate pool fixed, a modest error in ρ leaves 97.5% of the portfolio unchanged, and across the whole swept range the overlap averages 82%. But run the <i>full</i> pipeline — where a different ρ also changes who clears the positive-EV screen — and the overlap collapses to 0%. That contrast is the useful finding: ρ barely affects <i>which of the fundable loans to pick</i>; it almost entirely determines <i>who is fundable at all</i>. The optimiser's output is stable against the pricing assumptions; the screening step in front of it is not, and a real lender would need to estimate ρ carefully. That is a credit-policy question, not an optimisation one.</p>
+</section>
+
+<section class="cont">
+  <h3>5.6 Fairness and diversification as optimiser terms, not footnotes</h3>
+  <p>Sweeping the fairness weight λ on a fixed instance traces the exchange rate between approval parity and expected profit. Each point is an optimal portfolio at one λ.</p>
+  <div class="two">
+    <div>
+      <table>
+        <tr><th class="n">λ</th><th class="n">Expected profit (NT$)</th><th class="n">Approval gap F − M</th></tr>
+        <tr><td class="n">0 – 2,000</td><td class="n">35,821</td><td class="n">+31.4 pp</td></tr>
+        <tr><td class="n">4,000 – 16,000</td><td class="n">35,701</td><td class="n">+24.8 pp</td></tr>
+        <tr><td class="n">32,000</td><td class="n">33,702</td><td class="n">+11.7 pp</td></tr>
+        <tr><td class="n">64,000</td><td class="n">33,384</td><td class="n">+9.3 pp</td></tr>
+      </table>
+      <p class="small">Closing the gap from +31.4 to +9.3 percentage points costs NT$ 2,437, or 6.8% of expected profit. Across the 5-instance benchmark, λ = 20,000 moved the mean gap from −20.6 to −7.6 pp for a 1.5% profit cost. Fairness is <b>priced</b>, not asserted <span class="cite">[21]</span>. The diversification term behaves the same way: with γ on, the Herfindahl index of the demo book falls and the panel reports what that cost.</p>
+    </div>
+    <figure><img src="artifacts/figures/fairness.png" alt="Price of parity frontier"><figcaption><b>Figure 4 — The price of parity.</b> Each point is an optimal book at a different λ; left is fairer, up is more profitable.</figcaption></figure>
+  </div>
+
+  <h3>5.7 Calibration of the AI stage</h3>
+  <div class="two">
+    <figure><img src="artifacts/figures/calibration.png" alt="Reliability curve"><figcaption><b>Figure 5 — Reliability curve.</b> The diagonal is perfect calibration; the model hugs it. Brier 0.135 against 0.172 for the base rate.</figcaption></figure>
+    <div><p>When the model says 30%, about 30% of those accounts default. This is the property the optimiser depends on, because it multiplies these probabilities by exposure and interest to produce the Hamiltonian's coefficients. A better-ranking but worse-calibrated model would produce a worse loan book.</p>
+    <p>The held-out test set is 9,000 accounts, stratified, never seen by the model. The 48 applicants embedded in the web dashboard and the pools drawn by the Streamlit demo are all test-set rows.</p></div>
+  </div>
+</section>
+
+<!-- ============================ 6. SELF-AUDIT ============================ -->
+<section>
+  <h2><span class="n">06</span>Self-audit: claims that were made, checked and withdrawn</h2>
+  <p class="lead">The measurement methodology found four problems in the project's own earlier claims. They are listed because a submission that has audited itself is more credible than one that has not, and because each one is a transferable lesson.</p>
+  <table>
+    <tr><th style="width:26%">Claim as first written</th><th>What the check showed</th><th style="width:30%">Action</th></tr>
+    <tr><td>"QAOA depth p = 2 is best on this problem."</td><td>A single QAOA seed per cell. Re-running with different transpilation ranked p = 2 worst. Within-cell scatter (0.0211) is six times the between-depth spread (0.0036).</td><td>Retracted. Three seeds per cell; the deliverable states that no depth is meaningfully best.</td></tr>
+    <tr><td>"Best-of-N readout is blind to gate noise" (it returned the optimum at every error level in the 3-seed pilot).</td><td>At 12 seeds best-of-N ranges 0.9188–1.0000 across the sweep, and both statistics move by less than the within-level scatter.</td><td>Retracted rather than kept because it read well. The sweep is reported as inconclusive with the seeds needed to resolve it.</td></tr>
+    <tr><td>"The portfolio is 0% robust to the pricing assumptions."</td><td>The first sensitivity run resampled the candidate pool for each ρ, confounding screening with allocation.</td><td>Separated into fixed-pool and full-pipeline measurements; the finding became the more useful one in §5.5.</td></tr>
+    <tr><td>Hard-coded prose: "QAOA beats the heuristic on both counts", "logistic regression beats boosting".</td><td>Both became false after the dataset change and the multi-seed benchmark.</td><td>All Deliverable-4 prose is now generated from the measured CSVs; the page cannot drift from the experiment.</td></tr>
+  </table>
+  <p>Two further defects were caught mechanically. A test caught the fairness term going constant after a label change (§4.6). And while preparing this report, currency labels reading "DM" — Deutschmarks, from the German Credit era — were found still attached to the fairness figure, the Deliverable-4 generator and the demo animation. They now read NT$. The numbers were always correct; the labels were not.</p>
+  <div class="callout">
+    <p><b>The methodological through-line.</b> Every retraction above has the same shape: a small sample suggested an effect, a larger sample showed the effect was inside its own noise floor. The project's standing rule became <i>report the within-cell scatter next to every between-condition difference, and claim nothing whose difference is smaller than its scatter.</i></p>
+  </div>
+</section>
+
+<!-- ============================ 7. DEMOS AND DASHBOARD ============================ -->
+<section class="pb">
+  <h2><span class="n">07</span>The live demos and the dashboard (Deliverable 3)</h2>
+
+  <h3>7.1 The Streamlit demo</h3>
+  <figure><img src="artifacts/streamlit_frame.png" alt="Streamlit demo frame"><figcaption><b>Figure 6 — The Streamlit demo</b> (<code>app.py</code>). The capital-budget slider re-optimises the loan book live; the funded portfolio is highlighted and the marker tracks the current budget on the profit curve. Every metric and control carries a tooltip explaining what it shows and what it means; a circuit tab shows the transpiled QAOA ansatz; results export to CSV. QAOA calls are pre-warmed and cached so the slider responds instantly.</figcaption></figure>
+
+  <h3>7.2 The 3D dashboard</h3>
+  <p>A deployable React + Three.js front-end (<code>web/</code>) for the same problem, built with Vite, React 18, TypeScript, React Three Fiber, drei, Framer Motion and GSAP <span class="cite">[18]</span>. Every borrower is a procedural 3D human figure on a bank floor. The page runs the <b>exact</b> solver on 48 real scored applicants in the browser, enumerating all 2<sup>n</sup> portfolios (instant at n ≤ 12) with the identical objective as <code>src/portfolio.py</code>. QAOA runs in the Python backend and is benchmarked against this exact answer there; the page says so in its "How to read this" drawer.</p>
+  <figure><img src="artifacts/dashboard.png" alt="The 3D dashboard"><figcaption><b>Figure 7 — The dashboard at rest</b>: 10 customers, a budget of 14 units, 14 qubits, optimal expected profit NT$ 49,125. Left: controls. Centre: the floor, with the profit-across-every-budget curve and the energy landscape beneath it. Right: readouts and the pool table.</figcaption></figure>
+
+  <h4>How to read each element</h4>
+  <table>
+    <tr><th style="width:24%">Element</th><th>What it shows</th><th style="width:34%">What to say to a judge</th></tr>
+    <tr><td>Header KPIs</td><td>Pool size, budget in NT$ 20,000 units, qubit count (n + slack), optimal profit</td><td>"Fourteen qubits — ten customers plus four to encode the budget inequality. The budget, not the head-count, drives the qubit count."</td></tr>
+    <tr><td>The floor</td><td>Funded people step onto the lit stage with arms raised and a gold ring; declined people stand back, faded. Coin stacks = capital demand; red floor ring = default risk from the AI; outfit colour = segment.</td><td>"Every person is a real customer. The AI has already priced them — that's the red ring. The optimiser chose who steps on stage."</td></tr>
+    <tr><td>Beams</td><td>Teal beam between two funded people of the same segment (diversification on); plum beam between opposite groups (fairness on)</td><td>"Those are the ZZ couplings of the Hamiltonian. Expand a squared penalty and you get exactly those pairwise terms."</td></tr>
+    <tr><td>Profit across every budget</td><td>The optimiser solved exactly at every budget level; the gold dot is the current budget</td><td>"It bends over: diminishing returns. The first units fund the best customers; each extra unit buys progressively worse risk-adjusted value. A bank should set its budget at the knee."</td></tr>
+    <tr><td>Energy landscape</td><td>All 2<sup>n</sup> portfolios scored by the Ising Hamiltonian and sorted; lower is better; the gold point is the ground state; the grey band is over-budget books pushed up by the penalty; a plum line marks your own book in game mode</td><td>"This is the quantum idea in one picture. Lower energy means more profit by construction, so 'find the best book' becomes 'find the lowest point'. That point is the ground state — exactly what QAOA is built to find. QAOA never sees this picture; it has to find the dot without it."</td></tr>
+    <tr><td>Readouts</td><td>Expected profit; capital used; Herfindahl concentration with a diversified / concentrated / one-basket pill; approval gap F − M with fair / skewed / unfair; the cost of each rule against the unconstrained optimum; greedy vs. optimum</td><td>"Flip fairness on: the gap collapses and the panel tells you what it cost. We don't claim fairness — we price it."</td></tr>
+    <tr><td>The pool table</td><td>Every customer's segment, group, P(default), expected value, units and whether they are in the book; rows are clickable in game mode</td><td>"Hover a person or read the row — same numbers."</td></tr>
+    <tr><td>You vs optimiser</td><td>Click people to fund them, stay under budget, try to reach the ground state; the readouts show your book against the optimiser's and your position on the landscape</td><td>"Most people get to 85–90% and can't find the rest, because with ten customers there are 1,024 books and every extra customer doubles it."</td></tr>
+  </table>
+  <p class="small">The dashboard is a locked viewport layout above 1,180 px (rails span the full height, stage over charts) and a stacked scrolling page below it. It ships as a static Vite build and deploys to Vercel by setting the root directory to <code>web</code>; deployment is currently held pending the team's decision.</p>
+
+  <h3>7.3 Supporting deliverables</h3>
+  <ul>
+    <li><b>DELIVERABLE_4.html</b> — the literal one-page comparison, A4, generated from the artifacts; <b>DELIVERABLE_4.md</b> is the long-form version with the tables reproduced in §5.</li>
+    <li><b>PRESENTATION.pptx</b> — 8 slides generated by <code>src/make_deck.js</code> from the same artifacts, geometry-checked numerically by <code>src/qa_deck.py</code> because the build machine has no renderer.</li>
+    <li><b>PITCH.md, JUDGE_DEFENSE.md, CONCEPTS_EXPLAINED.md, EXPLAINING_THE_GRAPHS.md</b> — the 3-minute script, the judge Q&amp;A, a from-scratch explainer of every concept and formula, and the chart-by-chart presenter's guide.</li>
+  </ul>
+</section>
+
+<!-- ============================ 8. REPRODUCIBILITY ============================ -->
+<section>
+  <h2><span class="n">08</span>Reproducibility and verification</h2>
+  <h3>Environment</h3>
+  <table>
+    <tr><th>Component</th><th>Version</th><th>Note</th></tr>
+    <tr><td>Python</td><td class="n">3.14.5</td><td>Only interpreter on the build machine</td></tr>
+    <tr><td>qiskit</td><td class="n">2.5.2</td><td rowspan="3"><code>qiskit-optimization</code> requires <code>qiskit &lt; 3</code>; QAOA and COBYLA moved into <code>qiskit_optimization</code> at 0.7.0, so tutorials importing them from <code>qiskit_algorithms</code> fail. Pinned deliberately.</td></tr>
+    <tr><td>qiskit-aer</td><td class="n">0.17.2</td></tr>
+    <tr><td>qiskit-optimization</td><td class="n">0.7.0</td></tr>
+    <tr><td>scikit-learn / pandas / numpy</td><td class="n">1.9.0 / 3.0.5 / 2.5.2</td><td></td></tr>
+    <tr><td>streamlit / matplotlib</td><td class="n">1.62.0 / 3.11.1</td><td></td></tr>
+    <tr><td>Web: react / three / @react-three/fiber</td><td class="n">18 / 0.169 / 8.17</td><td>Vite 5, TypeScript, drei, framer-motion 11, gsap 3.12</td></tr>
+  </table>
+
+  <h3>Commands</h3>
+  <pre>py -3.14 -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe run_all.py            # everything end to end, ~40 min (benchmark + ablations dominate)
+.venv/Scripts/python.exe run_all.py --fast     # regenerate figures and pages from existing results, ~20 s
+.venv/Scripts/python.exe -m pytest tests -q    # 22 tests; the 3 QAOA tests are marked slow
+.venv/Scripts/streamlit run app.py             # Deliverable 3, Streamlit
+cd web && npm install && npm run dev           # the 3D dashboard</pre>
+
+  <h3>What the tests and CI guarantee</h3>
+  <ul>
+    <li><b>22 tests pass</b> (verified 6 September 2026). The load-bearing ones: brute force agrees with exact diagonalisation of the QUBO; the penalised QUBO still agrees with brute force; the qubit count follows n + ceil(log<sub>2</sub>(B+1)); the portfolio depends only on ρ = LGD/APR.</li>
+    <li><b>CI</b> (GitHub Actions) runs the tests and both page generators from a clean checkout, so a page that cannot be rebuilt from the committed evidence fails the build. Numeric drift is reported as a notice rather than an error, because matplotlib PNG bytes differ between the Linux runner and the Windows build machine; byte-level reproducibility is verified locally.</li>
+    <li><b>No number is typed by hand.</b> Deliverable 4, the one-pager and the deck are generated from <code>artifacts/*.csv</code> and <code>*.json</code>. The tables in §5 of this report were transcribed from those artifacts at the commit named on the cover.</li>
+    <li><b>Seeds are fixed</b> for instance sampling, model training, transpilation and the sampler, and the QAOA repeat index is part of the seed so cells are independent.</li>
+  </ul>
+
+  <h3>Runtime budget of the evidence</h3>
+  <table>
+    <tr><th>Experiment</th><th>Runs</th><th>Approx. time</th><th>Script</th></tr>
+    <tr><td>Quality benchmark</td><td>8 instances × 3 depths × 3 seeds = 72 QAOA runs + classical references</td><td class="n">~10 min</td><td><code>src/benchmark.py</code></td></tr>
+    <tr><td>Scaling</td><td>4 sizes, 10–16 qubits</td><td class="n">~1 min</td><td><code>src/benchmark.py</code></td></tr>
+    <tr><td>Noise sweep</td><td>5 error levels × 12 seeds, noisy simulation ~24× slower</td><td class="n">~55 min</td><td><code>src/noise_ablation.py</code></td></tr>
+    <tr><td>CVaR ablation</td><td>4 settings × 64 runs</td><td class="n">~20 min</td><td><code>src/cvar_ablation.py</code></td></tr>
+    <tr><td>Sensitivity</td><td>7 values of ρ × 8 instances, fixed-pool and full-pipeline, + 24 rescaling checks</td><td class="n">~1 min</td><td><code>src/sensitivity.py</code></td></tr>
+  </table>
+</section>
+
+<!-- ============================ 9. LIMITATIONS ============================ -->
+<section>
+  <h2><span class="n">09</span>Limitations, honest positioning and future work</h2>
+  <h3>Limitations stated plainly</h3>
+  <ul>
+    <li><b>No quantum advantage is claimed or observed.</b> QAOA is orders of magnitude slower than exhaustive classical search at this size and slightly worse than a greedy heuristic. The project measures the gap and shows where the method stops being simulable.</li>
+    <li><b>Simulation, not hardware.</b> Beyond ~20 qubits the statevector simulator falls off a cliff; the noise sweep is inconclusive at the seed count that was affordable.</li>
+    <li><b>The fairness term demonstrates a mechanism.</b> It is not a finding about lending discrimination in Taiwan in 2005, and dropping <code>SEX</code> from the features does not rule out proxy effects.</li>
+    <li><b>The segment is a proxy.</b> Education band stands in for an industry-sector exposure.</li>
+    <li><b>APR and LGD are assumptions.</b> Only their ratio matters, and the answer's sensitivity to it is measured rather than the numbers being asserted correct.</li>
+    <li><b>One bank, one country, one six-month window.</b> The classifier would need retraining on any other book.</li>
+  </ul>
+  <h3>Where the work goes next</h3>
+  <ul>
+    <li><b>Larger instances by decomposition.</b> Cluster the book by segment, solve each cluster's sub-problem within a qubit budget, and reconcile the budget across clusters classically — the standard route to problems beyond the simulable size.</li>
+    <li><b>A hardware run at 10–14 qubits</b> with error mitigation, once the noise sweep has enough seeds to predict what to expect. The seed count required (104 per level) is known.</li>
+    <li><b>Real sector and exposure data.</b> An Indian lender's book with an actual industry code would replace the education-band proxy and answer the "why not India" question directly, by swapping one loader function.</li>
+    <li><b>Warm-started QAOA</b> from the greedy solution, which is the natural way to let the quantum module start where the classical baseline finishes rather than compete with it from scratch.</li>
+  </ul>
+  <div class="callout gold">
+    <p><b>Why the negative result is the strongest part of the submission.</b> The project ran the quantum-versus-classical comparison honestly, classical won, and the result is on the page — because a fabricated quantum win is the thing that does not survive a judge's first question, and a team that has retracted its own over-claims three times can be believed about the claims it kept.</p>
+  </div>
+</section>
+
+<!-- ============================ 10. REFERENCES ============================ -->
+<section class="pb">
+  <h2><span class="n">10</span>References</h2>
+  <ol class="refs">
+    <li><div>Yeh, I.-C., &amp; Lien, C.-H. (2009). The comparisons of data mining techniques for the predictive accuracy of probability of default of credit card clients. <i>Expert Systems with Applications</i>, 36(2), 2473–2480. <a href="https://doi.org/10.1016/j.eswa.2007.12.020">https://doi.org/10.1016/j.eswa.2007.12.020</a></div></li>
+    <li><div>Yeh, I.-C. (2009). <i>Default of Credit Card Clients</i> [Dataset 350]. UCI Machine Learning Repository. Licence CC BY 4.0. <a href="https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients">https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients</a> · <a href="https://doi.org/10.24432/C55S3H">https://doi.org/10.24432/C55S3H</a></div></li>
+    <li><div>Grömping, U. (2019). <i>South German Credit Data: Correcting a Widely Used Data Set</i>. Report 4/2019, Reports in Mathematics, Physics and Chemistry, Beuth University of Applied Sciences Berlin.</div></li>
+    <li><div>Hofmann, H. (1994). <i>Statlog (German Credit Data)</i> [Dataset 144]. UCI Machine Learning Repository. <a href="https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data">https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data</a></div></li>
+    <li><div>Farhi, E., Goldstone, J., &amp; Gutmann, S. (2014). A Quantum Approximate Optimization Algorithm. <i>arXiv:1411.4028</i>. <a href="https://arxiv.org/abs/1411.4028">https://arxiv.org/abs/1411.4028</a></div></li>
+    <li><div>Lucas, A. (2014). Ising formulations of many NP problems. <i>Frontiers in Physics</i>, 2, 5. <a href="https://doi.org/10.3389/fphy.2014.00005">https://doi.org/10.3389/fphy.2014.00005</a></div></li>
+    <li><div>Barkoutsos, P. K., Nannicini, G., Robert, A., Tavernelli, I., &amp; Woerner, S. (2020). Improving Variational Quantum Optimization using CVaR. <i>Quantum</i>, 4, 256. <a href="https://doi.org/10.22331/q-2020-04-20-256">https://doi.org/10.22331/q-2020-04-20-256</a></div></li>
+    <li><div>Guerreschi, G. G., &amp; Matsuura, A. Y. (2019). QAOA for Max-Cut requires hundreds of qubits for quantum speed-up. <i>Scientific Reports</i>, 9, 6903. <a href="https://doi.org/10.1038/s41598-019-43176-9">https://doi.org/10.1038/s41598-019-43176-9</a></div></li>
+    <li><div>Javadi-Abhari, A., Treinish, M., Krsulich, K., et al. (2024). Quantum computing with Qiskit. <i>arXiv:2405.08810</i>. Software: Qiskit 2.5.2, Qiskit Aer 0.17.2, qiskit-optimization 0.7.0. <a href="https://arxiv.org/abs/2405.08810">https://arxiv.org/abs/2405.08810</a></div></li>
+    <li><div>Pedregosa, F., et al. (2011). Scikit-learn: Machine Learning in Python. <i>Journal of Machine Learning Research</i>, 12, 2825–2830. <a href="https://scikit-learn.org">https://scikit-learn.org</a></div></li>
+    <li><div>Platt, J. C. (1999). Probabilistic outputs for support vector machines and comparisons to regularized likelihood methods. In <i>Advances in Large Margin Classifiers</i> (pp. 61–74). MIT Press.</div></li>
+    <li><div>Brier, G. W. (1950). Verification of forecasts expressed in terms of probability. <i>Monthly Weather Review</i>, 78(1), 1–3.</div></li>
+    <li><div>Hirschman, A. O. (1945). <i>National Power and the Structure of Foreign Trade</i>. University of California Press; Herfindahl, O. C. (1950). <i>Concentration in the Steel Industry</i>. PhD thesis, Columbia University. (The Herfindahl–Hirschman concentration index.)</div></li>
+    <li><div>Kellerer, H., Pferschy, U., &amp; Pisinger, D. (2004). <i>Knapsack Problems</i>. Springer. <a href="https://doi.org/10.1007/978-3-540-24777-7">https://doi.org/10.1007/978-3-540-24777-7</a></div></li>
+    <li><div>Glover, F., Kochenberger, G., &amp; Du, Y. (2019). Quantum Bridge Analytics I: a tutorial on formulating and using QUBO models. <i>4OR</i>, 17, 335–371. <a href="https://doi.org/10.1007/s10288-019-00424-y">https://doi.org/10.1007/s10288-019-00424-y</a></div></li>
+    <li><div>Powell, M. J. D. (1994). A direct search optimization method that models the objective and constraint functions by linear interpolation. In <i>Advances in Optimization and Numerical Analysis</i> (pp. 51–67). Springer. (COBYLA.)</div></li>
+    <li><div>Qiskit Community. <i>Portfolio Optimization</i> tutorial, Qiskit Finance. <a href="https://qiskit-community.github.io/qiskit-finance/tutorials/01_portfolio_optimization.html">https://qiskit-community.github.io/qiskit-finance/tutorials/01_portfolio_optimization.html</a> — surveyed as comparable work; the mean-variance risk term was adopted from it, CVaR aggregation was tested and rejected.</div></li>
+    <li><div>Three.js <a href="https://threejs.org">https://threejs.org</a> · React Three Fiber and drei (Poimandres) <a href="https://docs.pmnd.rs/react-three-fiber">https://docs.pmnd.rs/react-three-fiber</a> · Framer Motion <a href="https://www.framer.com/motion/">https://www.framer.com/motion/</a> · GSAP <a href="https://gsap.com">https://gsap.com</a> · Vite <a href="https://vitejs.dev">https://vitejs.dev</a></div></li>
+    <li><div>IEEE Quantum AI Hackathon 2026. <i>Quantum AI Hackathon Themes and Guidelines</i> (participant PDF). Theme 25, Optimization / Finance track; deliverables and judging criteria.</div></li>
+    <li><div>Markowitz, H. (1952). Portfolio Selection. <i>The Journal of Finance</i>, 7(1), 77–91. <a href="https://doi.org/10.2307/2975974">https://doi.org/10.2307/2975974</a> (the mean-variance formulation whose risk term motivated §4.3).</div></li>
+    <li><div>Feldman, M., Friedler, S. A., Moeller, J., Scheidegger, C., &amp; Venkatasubramanian, S. (2015). Certifying and removing disparate impact. <i>Proceedings of KDD 2015</i>, 259–268. <a href="https://doi.org/10.1145/2783258.2783311">https://doi.org/10.1145/2783258.2783311</a> (approval-rate parity as a disparate-impact measure).</div></li>
+  </ol>
+  <p class="footer-note">Software versions are those installed in the project's virtual environment at the commit named on the cover. Dataset licence and DOI are as listed on the UCI repository page at the time of writing.</p>
+</section>
+
+<!-- ============================ APPENDIX A ============================ -->
+<section>
+  <h2><span class="n">A</span>Glossary</h2>
+  <dl class="gloss">
+    <dt>Approximation ratio (AR)</dt><dd>Objective value of the solver's answer divided by the exact optimum's. 1.0 means it found the best book.</dd>
+    <dt>AUC</dt><dd>Area under the ROC curve: the probability that a random defaulter is scored riskier than a random non-defaulter. 0.5 is chance, 1.0 is perfect ranking.</dd>
+    <dt>Brier score</dt><dd>Mean squared error between predicted probabilities and 0/1 outcomes. Lower is better; it rewards calibration, not just ranking.</dd>
+    <dt>Calibration</dt><dd>A model is calibrated when, among accounts it scores 30%, about 30% actually default.</dd>
+    <dt>COBYLA</dt><dd>A derivative-free classical optimiser; here it tunes the QAOA angles.</dd>
+    <dt>CVaR aggregation</dt><dd>Scoring a QAOA parameter setting by the mean of its best α-fraction of samples instead of all samples.</dd>
+    <dt>Expected value (EV)</dt><dd>Interest earned if repaid, weighted by P(repay), minus loss if defaulted, weighted by P(default).</dd>
+    <dt>Ground state</dt><dd>The lowest-energy configuration of a Hamiltonian. By construction here, the optimal loan book.</dd>
+    <dt>Herfindahl index</dt><dd>Sum of squared shares. 1/k when capital is spread evenly over k segments; 1.0 when it is all in one.</dd>
+    <dt>Ising Hamiltonian</dt><dd>An energy function over ±1 spins with single-spin (Z) and pairwise (ZZ) terms; a QUBO in different variables.</dd>
+    <dt>Knapsack (0-1)</dt><dd>Choose items with values and weights to maximise value under a weight limit; each item taken whole or not at all.</dd>
+    <dt>LGD</dt><dd>Loss given default: the fraction of exposure lost when a borrower defaults.</dd>
+    <dt>Noise floor</dt><dd>The spread of a measurement across repeated runs under identical conditions. A difference smaller than it is not a finding.</dd>
+    <dt>Parity gap</dt><dd>Approval rate of one group minus that of the other, in percentage points.</dd>
+    <dt>QAOA</dt><dd>Quantum Approximate Optimization Algorithm: a variational circuit whose measured bitstrings concentrate near a Hamiltonian's ground state.</dd>
+    <dt>QUBO</dt><dd>Quadratic Unconstrained Binary Optimization: minimise xᵀQx over binary x. Constraints are folded in as penalties.</dd>
+    <dt>Slack qubits</dt><dd>Extra binary variables that turn an inequality constraint into an equality so it can be penalised.</dd>
+    <dt>ρ (rho)</dt><dd>LGD / APR — the single pricing parameter the portfolio actually depends on.</dd>
+  </dl>
+</section>
+
+<!-- ============================ APPENDIX B ============================ -->
+<section>
+  <h2><span class="n">B</span>Repository index</h2>
+  <table class="filetree">
+    <tr><th>Path</th><th>Purpose</th></tr>
+    <tr><td>src/data.py</td><td>Downloads and loads the UCI dataset; derives default, group, sector, exposure and EV (APR 18%, LGD 60%)</td></tr>
+    <tr><td>src/ai_model.py</td><td>Deliverable 1: calibrated HistGBM + logistic baseline; writes artifacts/ai_metrics.json and scored_applicants.csv</td></tr>
+    <tr><td>src/portfolio.py</td><td>PortfolioProblem: objective, Herfindahl and parity penalties, QuadraticProgram → QUBO, qubit accounting</td></tr>
+    <tr><td>src/solvers.py</td><td>Deliverable 2: brute force, NumPy eigensolver, greedy, QAOA (SamplerV2, pass manager, optional depolarizing noise, CVaR)</td></tr>
+    <tr><td>src/benchmark.py</td><td>Quality benchmark (8 × 3 × 3) and scaling table; stability check for the noise floor</td></tr>
+    <tr><td>src/noise_ablation.py · src/cvar_ablation.py · src/sensitivity.py</td><td>The three ablations of §5.3–5.5, each with a --summarize-only mode</td></tr>
+    <tr><td>src/figures.py</td><td>Figures 1–5 from the CSVs</td></tr>
+    <tr><td>src/make_deliverable4.py · src/make_onepager.py</td><td>Deliverable 4 long form and the one-page A4 HTML, all prose data-derived</td></tr>
+    <tr><td>src/make_deck.js · src/qa_deck.py · src/make_demo_gif.py</td><td>The deck, its numeric geometry check, and the demo animation</td></tr>
+    <tr><td>app.py</td><td>Deliverable 3: the Streamlit demo</td></tr>
+    <tr><td>web/</td><td>The 3D dashboard (Vite + React + R3F); web/src/lib/problem.ts is the in-browser exact solver, web/src/data/applicants.ts the 48 embedded real rows</td></tr>
+    <tr><td>tests/test_core.py</td><td>22 tests</td></tr>
+    <tr><td>artifacts/</td><td>Every measured CSV/JSON, the figures, demo.gif, dashboard.png</td></tr>
+    <tr><td>run_all.py · .github/workflows/ci.yml</td><td>End-to-end rebuild and continuous integration</td></tr>
+    <tr><td>README.md · PITCH.md · JUDGE_DEFENSE.md · CONCEPTS_EXPLAINED.md · EXPLAINING_THE_GRAPHS.md · NOTEBOOKLM_CONTEXT.md</td><td>Documentation and presenter material</td></tr>
+    <tr><td>DELIVERABLE_4.md · DELIVERABLE_4.html · PRESENTATION.pptx · REPORT.pdf</td><td>The submitted documents</td></tr>
+  </table>
+  <p class="footer-note">Team ASTITWA · Tanishq Aryan · IEEE Quantum AI Hackathon 2026 · Theme 25. Report generated 6 September 2026 from the repository at commit 9bdaff6. Every figure and number in §5 is reproducible with <code>run_all.py</code>.</p>
+</section>
+
+</body>
+</html>
