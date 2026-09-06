@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import type { Problem, Bits, Solution } from "../lib/problem";
 import { profit, used, concentration, parityGap, objective } from "../lib/problem";
 import { SECTOR_COLOR } from "../scene/Person";
+import { ProfitCurve, type CurvePt } from "./ProfitCurve";
 
 /** Animated number that tweens between values. */
 export function Num({ value, prefix = "", suffix = "", digits = 0 }: { value: number; prefix?: string; suffix?: string; digits?: number }) {
@@ -48,10 +49,10 @@ export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: P
 
       <h2>Legend</h2>
       <div className="legend">
-        <div><i style={{ background: "#F2B84B" }} />Funded · on stage</div>
-        <div><i style={{ background: "#3A4360" }} />Declined</div>
-        <div><i style={{ background: "#E5533D" }} />Floor glow = default risk</div>
-        <div><i style={{ background: "#5EE7F0" }} />Beam = quantum coupling</div>
+        <div><i style={{ background: "#E9B949" }} />Funded · on stage</div>
+        <div><i style={{ background: "#C9CBCF" }} />Declined · faded</div>
+        <div><i style={{ background: "#E0553C" }} />Floor ring = default risk</div>
+        <div><i style={{ background: "#0F7C8C" }} />Beam = quantum coupling</div>
         {Object.entries(SECTOR_COLOR).filter(([k]) => k !== "other").map(([k, c]) => <div key={k}><i style={{ background: c }} />{k} outfit</div>)}
       </div>
     </motion.aside>
@@ -68,8 +69,8 @@ function Meter({ label, value, text, frac, cls, pill }: { label: string; value: 
   );
 }
 
-export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn }:
-  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean }) {
+export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn, curve }:
+  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean; curve: CurvePt[] }) {
   const pr = profit(P, shown), u = used(P, shown), H = concentration(P, shown), G = parityGap(P, shown), aG = Math.abs(G);
   const hCls = H < 0.35 ? "ok" : H < 0.6 ? "warn" : "crit", gCls = aG < 0.1 ? "ok" : aG < 0.25 ? "warn" : "crit";
   const ratio = greedy.obj / Math.max(best.obj, 1e-9);
@@ -103,6 +104,9 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
       {unconstrained && lOn && <div className="delta"><b>Fairness</b> moved the approval gap {parityGap(P, unconstrained.x).toFixed(2)} → {parityGap(P, best.x).toFixed(2)} and cost <b>NT${Math.round(profit(P, unconstrained.x) - profit(P, best.x)).toLocaleString()}</b>.</div>}
 
       <div className="meter"><div className="row"><span>Greedy heuristic vs optimum</span><b>{(ratio * 100).toFixed(1)}%</b></div></div>
+
+      <h2>Profit across every budget</h2>
+      <ProfitCurve pts={curve} current={P.budget} />
 
       <h2>Funded customers</h2>
       <div className="chips">

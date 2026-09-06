@@ -1,6 +1,7 @@
-/** Every one of the 2ⁿ portfolios, scored by the Hamiltonian's energy and sorted. The gold point is
- *  the ground state — by construction, the optimal loan book. The cyan marker is your own book in
- *  game mode. This is the genuine spectrum, computed by enumeration. */
+/** Every one of the 2ⁿ portfolios, scored by the Hamiltonian's energy and sorted, drawn as an
+ *  area chart. The gold point is the ground state — by construction, the optimal loan book. The
+ *  plum marker is your own book in game mode. Infeasible (over-budget) configurations are shown
+ *  as the greyed band at the top. This is the genuine spectrum, computed by enumeration. */
 import { useEffect, useRef } from "react";
 import type { SpecEntry } from "../lib/problem";
 
@@ -10,29 +11,44 @@ export function Landscape({ spectrum, currentMask, n, qubits }: { spectrum: Spec
     const c = ref.current, ctx = c.getContext("2d")!;
     const draw = () => {
       const dpr = Math.min(devicePixelRatio, 2), W = c.clientWidth, H = c.clientHeight;
+      if (!W || !H) return;
       c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-      const pad = { l: 8, r: 8, t: 12, b: 18 }, iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+      const pad = { l: 10, r: 12, t: 14, b: 20 }, iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
       const feas = spectrum.filter(s => s.feasible); if (!feas.length) return;
       const eMin = feas[0].e, eMax = feas[feas.length - 1].e, span = Math.max(1, eMax - eMin);
       const N = spectrum.length, cols = Math.min(N, Math.floor(iw)), per = N / cols;
-      ctx.strokeStyle = "#243050"; ctx.lineWidth = 1;
+      const nFeas = feas.length, feasW = (nFeas / N) * iw;
+
+      // grid
+      ctx.strokeStyle = "#E7E6E0"; ctx.lineWidth = 1;
       for (let k = 0; k <= 4; k++) { const y = pad.t + ih * k / 4; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke(); }
-      const curIdx = currentMask == null ? -1 : spectrum.findIndex(s => s.mask === currentMask);
-      let curX: number | null = null;
-      for (let col = 0; col < cols; col++) {
-        const i = Math.floor(col * per), s = spectrum[i];
-        const v = s.feasible ? Math.min(1, (s.e - eMin) / span) : 1;
-        const h = Math.max(1.5, (1 - v) * ih * 0.92);
-        ctx.globalAlpha = s.feasible ? 0.85 : 0.45; ctx.fillStyle = s.feasible ? "#5EE7F0" : "#33405F";
-        ctx.fillRect(pad.l + col * (iw / cols), pad.t + ih - h, Math.max(1, iw / cols - 0.4), h);
-        if (curIdx >= 0 && i <= curIdx && curIdx < Math.floor((col + 1) * per)) curX = pad.l + col * (iw / cols);
+      // infeasible band (over budget) — greyed, at the top
+      if (nFeas < N) { ctx.fillStyle = "#EFEEE9"; ctx.fillRect(pad.l + feasW, pad.t, iw - feasW, ih); ctx.fillStyle = "#9AA0A8"; ctx.font = '500 10px "DM Mono", monospace'; ctx.textAlign = "right"; ctx.fillText("over budget · infeasible", W - pad.r - 4, pad.t + 12); ctx.textAlign = "left"; }
+
+      // feasible energy curve: sample per column
+      const yAt = (s: SpecEntry) => pad.t + ih - (1 - Math.min(1, (s.e - eMin) / span)) * ih * 0.9;
+      const pts: [number, number][] = [];
+      for (let col = 0; col < cols; col++) { const i = Math.floor(col * per); const s = spectrum[i]; if (!s.feasible) break; pts.push([pad.l + col * (iw / cols), yAt(s)]); }
+      if (pts.length > 1) {
+        const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ih); grad.addColorStop(0, "rgba(15,124,140,0.30)"); grad.addColorStop(1, "rgba(15,124,140,0.02)");
+        ctx.beginPath(); ctx.moveTo(pts[0][0], pad.t + ih); pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(pts[pts.length - 1][0], pad.t + ih); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+        ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.strokeStyle = "#0F7C8C"; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.stroke();
       }
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#F2B84B"; ctx.beginPath(); ctx.arc(pad.l + 2, pad.t + ih - ih * 0.92, 5, 0, 7); ctx.fill();
-      ctx.font = '500 10.5px "IBM Plex Mono", monospace'; ctx.fillText("ground state = optimal book", pad.l + 12, pad.t + ih - ih * 0.92 + 4);
-      ctx.fillStyle = "#7E89A8"; ctx.fillText(`2^${n} = ${N.toLocaleString()} configurations · ${qubits} qubits · sorted by energy →`, pad.l, H - 5);
+      // ground state marker with leader
+      const gx = pad.l + 2, gy = yAt(feas[0]);
+      ctx.strokeStyle = "#C4841D"; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + 54, gy - 14); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "#E9B949"; ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, gy, 5, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.font = '500 10.5px "DM Mono", monospace'; ctx.fillStyle = "#C4841D"; ctx.fillText("ground state · optimal book", gx + 58, gy - 11);
+      // axis captions
+      ctx.fillStyle = "#7A8089"; ctx.font = '400 10.5px "DM Mono", monospace';
+      ctx.fillText(`2^${n} = ${N.toLocaleString()} configurations · ${qubits} qubits · sorted by energy →`, pad.l, H - 5);
       ctx.textAlign = "right"; ctx.fillText("lower = better", W - pad.r, H - 5); ctx.textAlign = "left";
-      if (curX != null) { ctx.strokeStyle = "#C9A0FF"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(curX + 1, pad.t); ctx.lineTo(curX + 1, pad.t + ih); ctx.stroke(); ctx.fillStyle = "#C9A0FF"; ctx.fillText("your book", Math.min(curX + 6, W - 70), pad.t + 10); }
+      // your book (game mode)
+      if (currentMask != null) {
+        const idx = spectrum.findIndex(s => s.mask === currentMask);
+        if (idx >= 0) { const cx = pad.l + (idx / per) * (iw / cols); ctx.strokeStyle = "#8B3A62"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, pad.t); ctx.lineTo(cx, pad.t + ih); ctx.stroke();
+          ctx.fillStyle = "#8B3A62"; ctx.font = '500 10.5px "DM Mono", monospace'; ctx.fillText("your book", Math.min(cx + 6, W - 72), pad.t + 12); }
+      }
     };
     draw();
     const ro = new ResizeObserver(draw); ro.observe(c);

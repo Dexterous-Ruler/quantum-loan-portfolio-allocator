@@ -29,6 +29,13 @@ export function samplePool(n: number, seed: number, budgetFrac: number): Problem
   return { pool, budget, n, qubits };
 }
 
+/** Same pool, different budget — used to trace profit across every budget level. */
+export function withBudget(P: Problem, budgetFrac: number): Problem {
+  const total = P.pool.reduce((a, p) => a + p.units, 0);
+  const budget = Math.max(2, Math.round(budgetFrac * total));
+  return { pool: P.pool, n: P.n, budget, qubits: P.n + Math.ceil(Math.log2(budget + 1)) };
+}
+
 /** Sorted labels → "female" < "male": the first group is the protected mask (group_mask in Python). */
 const isFirst = (p: Applicant) => p.group === "female";
 

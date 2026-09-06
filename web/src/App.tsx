@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { samplePool, solveExact, solveGreedy, maskOf, profit, type Bits } from "./lib/problem";
+import { samplePool, solveExact, solveGreedy, maskOf, profit, withBudget, type Bits } from "./lib/problem";
+import type { CurvePt } from "./ui/ProfitCurve";
+
+const BUDGET_FRACS = [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9];
 import { Scene } from "./scene/Scene";
 import { Controls, Readouts, Num, type ControlsState } from "./ui/Panels";
 import { Landscape } from "./ui/Landscape";
@@ -19,6 +22,12 @@ export default function App() {
   const best = useMemo(() => solveExact(P, gamma, lambda), [P, gamma, lambda]);
   const greedy = useMemo(() => solveGreedy(P, gamma, lambda), [P, gamma, lambda]);
   const unconstrained = useMemo(() => (gamma || lambda) ? solveExact(P, 0, 0) : null, [P, gamma, lambda]);
+  // Profit at every budget level for the same pool — solved exactly, keyed on the pool not the budget.
+  const curve = useMemo<CurvePt[]>(() => {
+    const seen = new Map<number, CurvePt>();
+    for (const f of BUDGET_FRACS) { const Pf = withBudget(P, f); if (seen.has(Pf.budget)) continue; seen.set(Pf.budget, { frac: f, budget: Pf.budget, profit: profit(Pf, solveExact(Pf, gamma, lambda).x) }); }
+    return [...seen.values()].sort((a, b) => a.budget - b.budget);
+  }, [P.pool, gamma, lambda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setManual(new Array(P.n).fill(0)); }, [P]);
   useEffect(() => { if (s.mode !== "opt") return; setTick(t => t + 1); setFlash(true); const id = setTimeout(() => setFlash(false), 1500); return () => clearTimeout(id); }, [best, s.mode]);
@@ -37,7 +46,7 @@ export default function App() {
         <div className="kpis">
           <div className="kpi"><div className="l">Customers</div><div className="v">{P.n}</div></div>
           <div className="kpi"><div className="l">Budget</div><div className="v">{P.budget} units</div></div>
-          <div className="kpi cyan"><div className="l">Qubits</div><div className="v">{P.qubits}</div></div>
+          <div className="kpi teal"><div className="l">Qubits</div><div className="v">{P.qubits}</div></div>
           <div className="kpi gold"><div className="l">Optimal profit</div><div className="v"><Num value={profit(P, best.x)} prefix="NT$ " /></div></div>
         </div>
       </motion.header>
@@ -52,11 +61,11 @@ export default function App() {
         <div className="hint">{s.mode === "man" ? "Click people to fund them · stay under budget · try to reach the ground state" : "Drag to orbit · scroll to zoom · hover a person · switch to game mode to try it yourself"}</div>
       </main>
 
-      <Readouts P={P} best={best} greedy={greedy} unconstrained={unconstrained} shown={shown} manual={man} gamma={gamma} lambda={lambda} gOn={s.gOn} lOn={s.lOn} />
+      <Readouts P={P} best={best} greedy={greedy} unconstrained={unconstrained} shown={shown} manual={man} gamma={gamma} lambda={lambda} gOn={s.gOn} lOn={s.lOn} curve={curve} />
 
       <footer>
         <div className="landWrap">
-          <div className="landHead"><h2>Energy landscape — every possible portfolio</h2></div>
+          <div className="landHead"><h2>Energy landscape — every possible portfolio</h2><span>ground state marked · lower is better</span></div>
           <Landscape spectrum={best.spectrum} currentMask={man ? maskOf(man) : null} n={P.n} qubits={P.qubits} />
         </div>
         <div className="note">
