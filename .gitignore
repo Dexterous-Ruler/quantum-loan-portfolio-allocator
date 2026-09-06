@@ -21,3 +21,9 @@ package-lock.json
 artifacts/rerun_log.txt
 artifacts/cvar_log.txt
 artifacts/lt_log.txt
+
+# web app (Vite) — build output and deps
+web/node_modules/
+web/dist/
+artifacts/web_preview.log
+web/tsconfig.tsbuildinfo

@@ -241,3 +241,22 @@ qiskit==2.5.2   qiskit-aer==0.17.2   qiskit-optimization==0.7.0   scikit-learn  
 Data: [UCI Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients)
 (30,000 accounts, 23 predictors, Taiwan 2005), downloaded on first run to `data/`.
 `xlrd` is required to read the published `.xls`.
+
+## The 3D simulation (`web/`)
+
+A deployable React + Three.js front-end for the same problem: each borrower is a 3D human
+figure on a bank floor. Funded people step onto the lit stage and raise their arms; declined
+people stand back in shadow. Outfit colour = segment, floor glow = default risk, light beams =
+the live ZZ couplings. A **"You vs optimiser"** game mode lets a judge fund people by hand and try
+to beat the ground state.
+
+It runs the **exact** solver on **real applicant data** in the browser (enumerating all 2ⁿ
+portfolios — instant at n ≤ 12), using the identical objective as `src/portfolio.py`. QAOA runs in
+the Python backend and is benchmarked against this exact answer there — the page says so.
+
+```bash
+cd web && npm install && npm run dev
+```
+
+Deploys to Vercel as a static site: import the repo, set **Root Directory** to `web`, framework
+auto-detects as Vite. Stack: Vite, React 18, TypeScript, React Three Fiber, drei, Framer Motion, GSAP.
