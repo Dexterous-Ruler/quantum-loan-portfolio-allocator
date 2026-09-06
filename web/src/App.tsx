@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { samplePool, solveExact, solveGreedy, maskOf, profit, withBudget, type Bits } from "./lib/problem";
+import { samplePool, solveExact, solveGreedy, maskOf, profit, withBudget, UNIT_NT, type Bits } from "./lib/problem";
 import { Scene } from "./scene/Scene";
 import { Controls, Readouts, Legend, Num, type ControlsState } from "./ui/Panels";
 import { Landscape } from "./ui/Landscape";
@@ -48,7 +48,7 @@ export default function App() {
         </div>
         <div className="kpis">
           <div className="kpi"><div className="l">Customers</div><div className="v">{P.n}</div></div>
-          <div className="kpi"><div className="l">Budget</div><div className="v">{P.budget} <small>units</small></div></div>
+          <div className="kpi"><div className="l">Budget</div><div className="v">NT$ <Num value={P.budget * UNIT_NT} /></div></div>
           <div className="kpi teal"><div className="l">Qubits</div><div className="v">{P.qubits}</div></div>
           <div className="kpi gold"><div className="l">Optimal profit</div><div className="v"><Num value={profit(P, best.x)} prefix="NT$ " /></div></div>
         </div>
@@ -56,7 +56,7 @@ export default function App() {
       </motion.header>
 
       <div className="body">
-        <Controls s={s} set={set} onReset={() => setManual(new Array(P.n).fill(0))} />
+        <Controls s={s} set={set} onReset={() => setManual(new Array(P.n).fill(0))} P={P} />
 
         <main className="stage">
           <Scene P={P} x={best.x} manual={man} gOn={s.gOn} lOn={s.lOn} solveTick={solveTick} onPick={onPick} reduced={REDUCED} />

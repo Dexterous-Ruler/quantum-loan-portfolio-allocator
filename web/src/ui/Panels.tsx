@@ -1,7 +1,7 @@
 import { motion, animate } from "framer-motion";
 import { useEffect, useRef } from "react";
 import type { Problem, Bits, Solution } from "../lib/problem";
-import { profit, used, concentration, parityGap, objective } from "../lib/problem";
+import { profit, used, concentration, parityGap, objective, UNIT_NT } from "../lib/problem";
 import { SECTOR_COLOR } from "../scene/Person";
 
 /** Animated number that tweens between values. */
@@ -16,7 +16,12 @@ export function Num({ value, prefix = "", suffix = "", digits = 0 }: { value: nu
 
 export interface ControlsState { n: number; budgetFrac: number; gOn: boolean; gamma: number; lOn: boolean; lambda: number; seed: number; mode: "opt" | "man"; }
 
-export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: Partial<ControlsState>) => void; onReset: () => void }) {
+/** NT$ 280,000 — grouped, no decimals. The demo never needs sub-dollar precision. */
+const nt = (v: number) => "NT$ " + Math.round(v).toLocaleString("en-US");
+
+export function Controls({ s, set, onReset, P }: { s: ControlsState; set: (patch: Partial<ControlsState>) => void; onReset: () => void; P: Problem }) {
+  const asked = P.pool.reduce((a, p) => a + p.units, 0) * UNIT_NT;
+  const budgetNT = P.budget * UNIT_NT;
   return (
     <motion.aside className="rail left card ctl" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
       <h2>Mode</h2>
@@ -34,9 +39,9 @@ export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: P
       <div className="ctl-row"><label>Customers in pool <b>{s.n}</b></label>
         <input type="range" min={6} max={12} step={1} value={s.n} onChange={e => set({ n: +e.target.value })} aria-label="Customers in pool" />
         <small>One qubit per customer, plus slack qubits for the budget.</small></div>
-      <div className="ctl-row"><label>Capital budget <b>{Math.round(s.budgetFrac * 100)}%</b></label>
+      <div className="ctl-row"><label>Capital budget <b>{nt(budgetNT)}</b></label>
         <input type="range" min={0.2} max={0.9} step={0.05} value={s.budgetFrac} onChange={e => set({ budgetFrac: +e.target.value })} aria-label="Capital budget" />
-        <small>Share of what everyone asks for. Under 100% forces a choice.</small></div>
+        <small>{P.budget} units of {nt(UNIT_NT)} · <b>{Math.round(s.budgetFrac * 100)}%</b> of the {nt(asked)} this pool is asking for.</small></div>
 
       <h2>Portfolio rules</h2>
       <label className="toggle"><input type="checkbox" checked={s.gOn} onChange={e => set({ gOn: e.target.checked })} /> Diversify across segments</label>
@@ -104,7 +109,7 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
         </div>
       )}
 
-      <Meter label="Capital used" value={`${u} / ${P.budget} units`} frac={u / P.budget} cls={u > P.budget ? "crit" : ""} />
+      <Meter label="Capital used" value={`${nt(u * UNIT_NT)} / ${nt(P.budget * UNIT_NT)}`} text={`${u} of ${P.budget} units of ${nt(UNIT_NT)}`} frac={u / P.budget} cls={u > P.budget ? "crit" : ""} />
       <Meter label="Concentration" value={H.toFixed(3)} frac={H} cls={hCls} pill={hCls === "ok" ? "diversified" : hCls === "warn" ? "concentrated" : "one basket"} />
       <Meter label="Approval gap (F − M)" value={(G >= 0 ? "+" : "") + G.toFixed(2)} frac={aG} cls={gCls} pill={gCls === "ok" ? "fair" : gCls === "warn" ? "skewed" : "unfair"} />
 
