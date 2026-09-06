@@ -18,7 +18,7 @@ export interface ControlsState { n: number; budgetFrac: number; gOn: boolean; ga
 
 export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: Partial<ControlsState>) => void; onReset: () => void }) {
   return (
-    <motion.aside className="panel card ctl" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+    <motion.aside className="rail left card ctl" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
       <h2>Mode</h2>
       <div className="seg" role="tablist">
         <button role="tab" aria-selected={s.mode === "opt"} className={s.mode === "opt" ? "on" : ""} onClick={() => set({ mode: "opt" })}>Optimiser</button>
@@ -33,10 +33,10 @@ export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: P
       <h2>The problem</h2>
       <div className="ctl-row"><label>Customers in pool <b>{s.n}</b></label>
         <input type="range" min={6} max={12} step={1} value={s.n} onChange={e => set({ n: +e.target.value })} aria-label="Customers in pool" />
-        <small>Each customer is one qubit. The budget adds slack qubits on top.</small></div>
+        <small>One qubit per customer, plus slack qubits for the budget.</small></div>
       <div className="ctl-row"><label>Capital budget <b>{Math.round(s.budgetFrac * 100)}%</b></label>
         <input type="range" min={0.2} max={0.9} step={0.05} value={s.budgetFrac} onChange={e => set({ budgetFrac: +e.target.value })} aria-label="Capital budget" />
-        <small>Share of what everyone asks for. Under 100% means the bank must choose.</small></div>
+        <small>Share of what everyone asks for. Under 100% forces a choice.</small></div>
 
       <h2>Portfolio rules</h2>
       <label className="toggle"><input type="checkbox" checked={s.gOn} onChange={e => set({ gOn: e.target.checked })} /> Diversify across segments</label>
@@ -49,17 +49,21 @@ export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: P
       <div className="ctl-row"><label>Draw a different pool <b>#{s.seed}</b></label>
         <input type="range" min={0} max={19} step={1} value={s.seed} onChange={e => set({ seed: +e.target.value })} aria-label="Instance seed" />
         <small>Re-samples real applicants from the 48 embedded. Nothing is cherry-picked.</small></div>
-      <button className="btn ghost" onClick={onReset}>Reset selection</button>
-
-      <h2>Legend</h2>
-      <div className="legend">
-        <div><i style={{ background: "#E9B949" }} />Funded · on stage</div>
-        <div><i style={{ background: "#C9CBCF" }} />Declined · faded</div>
-        <div><i style={{ background: "#E0553C" }} />Floor ring = default risk</div>
-        <div><i style={{ background: "#0F7C8C" }} />Beam = quantum coupling</div>
-        {Object.entries(SECTOR_COLOR).filter(([k]) => k !== "other").map(([k, c]) => <div key={k}><i style={{ background: c }} />{k} outfit</div>)}
-      </div>
+      {s.mode === "man" && <button className="btn ghost" onClick={onReset}>Reset selection</button>}
     </motion.aside>
+  );
+}
+
+/** Colour key, drawn over the bottom of the stage so it sits next to what it explains. */
+export function Legend() {
+  return (
+    <div className="legend-bar" aria-hidden="true">
+      <span><i style={{ background: "#E9B949" }} />Funded · on stage</span>
+      <span><i style={{ background: "#C9CBCF" }} />Declined · faded</span>
+      <span><i style={{ background: "#E0553C" }} />Floor ring = default risk</span>
+      <span><i style={{ background: "#0F7C8C" }} />Beam = quantum coupling</span>
+      {Object.entries(SECTOR_COLOR).filter(([k]) => k !== "other").map(([k, c]) => <span key={k}><i style={{ background: c }} />{k}</span>)}
+    </div>
   );
 }
 
@@ -73,8 +77,8 @@ function Meter({ label, value, text, frac, cls, pill }: { label: string; value: 
   );
 }
 
-export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn }:
-  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean }) {
+export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn, onPick }:
+  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean; onPick: (i: number) => void }) {
   const pr = profit(P, shown), u = used(P, shown), H = concentration(P, shown), G = parityGap(P, shown), aG = Math.abs(G);
   const hCls = H < 0.35 ? "ok" : H < 0.6 ? "warn" : "crit", gCls = aG < 0.1 ? "ok" : aG < 0.25 ? "warn" : "crit";
   const ratio = greedy.obj / Math.max(best.obj, 1e-9);
@@ -82,7 +86,7 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
   const over = manual ? used(P, manual) > P.budget : false;
   const pct = you != null && best.obj > 0 ? Math.max(0, you) / best.obj : 0;
   return (
-    <motion.aside className="panel card read" initial={{ x: 24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+    <motion.aside className="rail right card read" initial={{ x: 24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
       <h2>Result</h2>
       <div className="big"><div className="l">Expected profit</div><div className="v"><Num value={pr} /><small>NT$</small></div></div>
 
@@ -109,11 +113,23 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
 
       <div className="meter"><div className="row"><span>Greedy heuristic vs optimum</span><b>{(ratio * 100).toFixed(1)}%</b></div></div>
 
-      <h2>Funded customers</h2>
-      <div className="chips">
-        {P.pool.map((p, i) => shown[i] ? <span key={p.id} className="chip">#{p.id} · {p.sector.slice(0, 4)} · {p.group[0].toUpperCase()}</span> : null)}
-        {!shown.some(Boolean) && <span className="muted">none funded</span>}
-      </div>
+      <h2>The pool {manual && <span className="muted"> · click a row to fund</span>}</h2>
+      <table className={"pool" + (manual ? " pick" : "")}>
+        <colgroup><col className="c-id" /><col /><col className="c-p" /><col className="c-ev" /><col className="c-u" /><col className="c-b" /></colgroup>
+        <thead><tr><th>#</th><th>Segment</th><th className="num" title="Default probability from the AI model">P(def)</th><th className="num" title="Expected value, NT$ thousands">EV</th><th className="num" title="Capital units of NT$20,000">U</th><th className="num book" title="Funded in the current book">Book</th></tr></thead>
+        <tbody>
+          {P.pool.map((p, i) => (
+            <tr key={p.id} className={shown[i] ? "on" : "off"} onClick={manual ? () => onPick(i) : undefined}>
+              <td className="id">{p.id}</td>
+              <td className="seg"><i style={{ background: SECTOR_COLOR[p.sector as keyof typeof SECTOR_COLOR] ?? "#6E7683" }} />{p.sector.replace("high-school", "high sch.")} · {p.group[0].toUpperCase()}</td>
+              <td className="num">{(p.p * 100).toFixed(0)}%</td>
+              <td className={"num " + (p.ev < 0 ? "neg" : "")}>{Math.round(p.ev / 1000)}k</td>
+              <td className="num">{p.units}</td>
+              <td className="num book">{shown[i] ? "✓" : "·"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </motion.aside>
   );
 }

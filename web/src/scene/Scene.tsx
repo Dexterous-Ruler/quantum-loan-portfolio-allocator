@@ -41,7 +41,7 @@ function Stage({ budget, usedUnits }: { budget: number; usedUnits: number }) {
       <Line points={[[-7.3, 0.05, 0.02], [7.3, 0.05, 0.02]]} color="#C4841D" lineWidth={1.4} transparent opacity={0.8} />
       <spotLight position={[0, 9, 2.2]} angle={0.55} penumbra={0.8} intensity={1.6} color="#FFF1D6" castShadow />
       {/* vault gauge: beside the floor, back-left, so it never sits between the camera and the people */}
-      <group position={[-8.6, 0, -3.2]} scale={[0.85, 0.85, 0.85]}>
+      <group position={[-7.6, 0, -4.2]} scale={[0.7, 0.7, 0.7]}>
         <mesh position={[0, 1.4, 0]}><cylinderGeometry args={[0.55, 0.55, 2.8, 32, 1, true]} /><meshPhysicalMaterial color="#0F7C8C" transparent opacity={0.10} roughness={0.15} side={THREE.DoubleSide} /></mesh>
         <mesh ref={ref} position={[0, 0.05, 0]} scale={[1, 0.06, 1]}><cylinderGeometry args={[0.5, 0.5, 1, 32]} /><meshStandardMaterial color="#E9B949" emissive="#8A6A1E" emissiveIntensity={0.3} metalness={0.65} roughness={0.3} /></mesh>
         <mesh position={[0, 2.82, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.5, 0.58, 40]} /><meshBasicMaterial color="#0F7C8C" transparent opacity={0.9} side={THREE.DoubleSide} /></mesh>
@@ -78,7 +78,7 @@ export function Scene({ P, x, manual, gOn, lOn, solveTick, onPick, reduced }: Sc
   const homes = useMemo(() => layout(P.n), [P.n]);
   const shown = manual ?? x;
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 5.4, 11.8], fov: 40, near: 0.1, far: 120 }} gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 5.0, 10.6], fov: 40, near: 0.1, far: 120 }} gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       {/* transparent canvas: the CSS radial backdrop behind it is the studio seamless */}
       <fog attach="fog" args={["#EDEDE8", 20, 42]} />
       <hemisphereLight args={["#FFFFFF", "#D9D4C6", 0.9]} />
