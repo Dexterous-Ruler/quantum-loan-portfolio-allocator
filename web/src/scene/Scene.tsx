@@ -18,11 +18,12 @@ export interface SceneProps {
 }
 
 function layout(n: number): [number, number][] {
+  // a tighter arc so the group fills the frame; two staggered rows
   const out: [number, number][] = [];
   for (let i = 0; i < n; i++) {
-    const t = (i + 0.5) / n, a = Math.PI * (0.15 + 0.7 * t);
-    const r = 6.2 + (i % 2 ? 1.1 : 0);
-    out.push([Math.cos(a) * r, -Math.sin(a) * r * 0.55 - 1.2]);
+    const t = (i + 0.5) / n, a = Math.PI * (0.18 + 0.64 * t);
+    const r = 5.2 + (i % 2 ? 1.0 : 0);
+    out.push([Math.cos(a) * r, -Math.sin(a) * r * 0.5 - 1.0]);
   }
   return out;
 }
@@ -39,8 +40,8 @@ function Stage({ budget, usedUnits }: { budget: number; usedUnits: number }) {
       <mesh position={[0, 0.03, 2.2]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[14.6, 4]} /><meshBasicMaterial color="#E9B949" transparent opacity={0.07} /></mesh>
       <Line points={[[-7.3, 0.05, 0.02], [7.3, 0.05, 0.02]]} color="#C4841D" lineWidth={1.4} transparent opacity={0.8} />
       <spotLight position={[0, 9, 2.2]} angle={0.55} penumbra={0.8} intensity={1.6} color="#FFF1D6" castShadow />
-      {/* vault gauge */}
-      <group position={[9.2, 0, 1.6]}>
+      {/* vault gauge: beside the floor, back-left, so it never sits between the camera and the people */}
+      <group position={[-8.6, 0, -3.2]} scale={[0.85, 0.85, 0.85]}>
         <mesh position={[0, 1.4, 0]}><cylinderGeometry args={[0.55, 0.55, 2.8, 32, 1, true]} /><meshPhysicalMaterial color="#0F7C8C" transparent opacity={0.10} roughness={0.15} side={THREE.DoubleSide} /></mesh>
         <mesh ref={ref} position={[0, 0.05, 0]} scale={[1, 0.06, 1]}><cylinderGeometry args={[0.5, 0.5, 1, 32]} /><meshStandardMaterial color="#E9B949" emissive="#8A6A1E" emissiveIntensity={0.3} metalness={0.65} roughness={0.3} /></mesh>
         <mesh position={[0, 2.82, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.5, 0.58, 40]} /><meshBasicMaterial color="#0F7C8C" transparent opacity={0.9} side={THREE.DoubleSide} /></mesh>
@@ -77,7 +78,7 @@ export function Scene({ P, x, manual, gOn, lOn, solveTick, onPick, reduced }: Sc
   const homes = useMemo(() => layout(P.n), [P.n]);
   const shown = manual ?? x;
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 6.5, 14], fov: 42, near: 0.1, far: 120 }} gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 5.4, 11.8], fov: 40, near: 0.1, far: 120 }} gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       {/* transparent canvas: the CSS radial backdrop behind it is the studio seamless */}
       <fog attach="fog" args={["#EDEDE8", 20, 42]} />
       <hemisphereLight args={["#FFFFFF", "#D9D4C6", 0.9]} />
@@ -92,7 +93,8 @@ export function Scene({ P, x, manual, gOn, lOn, solveTick, onPick, reduced }: Sc
       ))}
       <Couplings P={P} x={shown} homes={homes} gOn={gOn} lOn={lOn} />
       <CameraRig solveTick={solveTick} reduced={reduced} />
-      <OrbitControls enablePan={false} minDistance={8} maxDistance={24} minPolarAngle={0.5} maxPolarAngle={1.35} autoRotate={!reduced} autoRotateSpeed={0.35} target={[0, 1, 0.5]} />
+      {/* front-facing composition: the camera can look around but never swing behind the group */}
+      <OrbitControls enablePan={false} minDistance={8} maxDistance={20} minPolarAngle={0.55} maxPolarAngle={1.3} minAzimuthAngle={-0.75} maxAzimuthAngle={0.75} enableDamping dampingFactor={0.08} target={[0, 1.1, 0.4]} />
     </Canvas>
   );
 }

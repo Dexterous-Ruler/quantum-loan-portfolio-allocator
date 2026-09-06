@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import type { Problem, Bits, Solution } from "../lib/problem";
 import { profit, used, concentration, parityGap, objective } from "../lib/problem";
 import { SECTOR_COLOR } from "../scene/Person";
-import { ProfitCurve, type CurvePt } from "./ProfitCurve";
 
 /** Animated number that tweens between values. */
 export function Num({ value, prefix = "", suffix = "", digits = 0 }: { value: number; prefix?: string; suffix?: string; digits?: number }) {
@@ -19,12 +18,17 @@ export interface ControlsState { n: number; budgetFrac: number; gOn: boolean; ga
 
 export function Controls({ s, set, onReset }: { s: ControlsState; set: (patch: Partial<ControlsState>) => void; onReset: () => void }) {
   return (
-    <motion.aside className="panel ctl" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+    <motion.aside className="panel card ctl" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
       <h2>Mode</h2>
       <div className="seg" role="tablist">
         <button role="tab" aria-selected={s.mode === "opt"} className={s.mode === "opt" ? "on" : ""} onClick={() => set({ mode: "opt" })}>Optimiser</button>
         <button role="tab" aria-selected={s.mode === "man"} className={s.mode === "man" ? "on" : ""} onClick={() => set({ mode: "man" })}>You vs optimiser</button>
       </div>
+      <p className="modeHelp">
+        {s.mode === "opt"
+          ? <><b>The machine chooses.</b> Adjust the pool, budget or rules and the optimiser re-solves instantly, picking the most profitable group that fits the budget.</>
+          : <><b>You choose.</b> Click people on the floor to fund them. Stay under budget and try to match the optimiser's profit — it's harder than it looks.</>}
+      </p>
 
       <h2>The problem</h2>
       <div className="ctl-row"><label>Customers in pool <b>{s.n}</b></label>
@@ -69,8 +73,8 @@ function Meter({ label, value, text, frac, cls, pill }: { label: string; value: 
   );
 }
 
-export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn, curve }:
-  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean; curve: CurvePt[] }) {
+export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma, lambda, gOn, lOn }:
+  { P: Problem; best: Solution; greedy: Solution; unconstrained: Solution | null; shown: Bits; manual: Bits | null; gamma: number; lambda: number; gOn: boolean; lOn: boolean }) {
   const pr = profit(P, shown), u = used(P, shown), H = concentration(P, shown), G = parityGap(P, shown), aG = Math.abs(G);
   const hCls = H < 0.35 ? "ok" : H < 0.6 ? "warn" : "crit", gCls = aG < 0.1 ? "ok" : aG < 0.25 ? "warn" : "crit";
   const ratio = greedy.obj / Math.max(best.obj, 1e-9);
@@ -78,7 +82,7 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
   const over = manual ? used(P, manual) > P.budget : false;
   const pct = you != null && best.obj > 0 ? Math.max(0, you) / best.obj : 0;
   return (
-    <motion.aside className="panel read" initial={{ x: 24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+    <motion.aside className="panel card read" initial={{ x: 24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
       <h2>Result</h2>
       <div className="big"><div className="l">Expected profit</div><div className="v"><Num value={pr} /><small>NT$</small></div></div>
 
@@ -104,9 +108,6 @@ export function Readouts({ P, best, greedy, unconstrained, shown, manual, gamma,
       {unconstrained && lOn && <div className="delta"><b>Fairness</b> moved the approval gap {parityGap(P, unconstrained.x).toFixed(2)} → {parityGap(P, best.x).toFixed(2)} and cost <b>NT${Math.round(profit(P, unconstrained.x) - profit(P, best.x)).toLocaleString()}</b>.</div>}
 
       <div className="meter"><div className="row"><span>Greedy heuristic vs optimum</span><b>{(ratio * 100).toFixed(1)}%</b></div></div>
-
-      <h2>Profit across every budget</h2>
-      <ProfitCurve pts={curve} current={P.budget} />
 
       <h2>Funded customers</h2>
       <div className="chips">
