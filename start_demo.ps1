@@ -96,7 +96,7 @@ if (Test-Port $WEB_PORT) {
     }
     Write-Step "starting vite preview on port $WEB_PORT"
     Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList '/c', "npm run preview -- --port $WEB_PORT > `"$logDir\web_preview.log`" 2>&1" `
+        -ArgumentList '/c', "npm run preview -- --port $WEB_PORT --host > `"$logDir\web_preview.log`" 2>&1" `
         -WorkingDirectory $webDir -WindowStyle Hidden
     if (Wait-Port $WEB_PORT 90) { Write-Good "up on port $WEB_PORT" }
     else { Write-Warn "did not come up - check $logDir\web_preview.log" }
@@ -109,9 +109,14 @@ if (Test-Port $APP_PORT) {
     Write-Good "already running on port $APP_PORT"
 } else {
     Write-Step "starting streamlit on port $APP_PORT (first solve is pre-warmed, ~20 s)"
-    Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList '/c', "`"$python`" -m streamlit run app.py --server.port $APP_PORT --server.headless true > `"$logDir\app_log.txt`" 2>&1" `
-        -WorkingDirectory $root -WindowStyle Hidden
+    # Launch python.exe directly. Going through `cmd.exe /c "... > log 2>&1"` silently
+    # failed to start anything here, so redirect with Start-Process's own switches
+    # (they cannot share one file, hence the separate stderr log).
+    Start-Process -FilePath $python `
+        -ArgumentList '-m','streamlit','run','app.py','--server.port',"$APP_PORT",'--server.headless','true' `
+        -WorkingDirectory $root -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $logDir 'app_log.txt') `
+        -RedirectStandardError  (Join-Path $logDir 'app_err.txt')
     if (Wait-Port $APP_PORT 120) { Write-Good "up on port $APP_PORT" }
     else { Write-Warn "did not come up - check $logDir\app_log.txt" }
 }
